@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include <map>
+#include <memory>
 #include <unordered_map>
 
 namespace Policy
@@ -26,8 +26,6 @@ namespace Policy
 
 		void touch(const Key& key)
 		{
-			if(frequency_storage.empty()) return;
-
 			auto elem_for_update = lfu_storage[key];
 			auto updated_elem = std::make_pair(elem_for_update->first + 1, elem_for_update->second);
 
@@ -41,6 +39,6 @@ namespace Policy
 			lfu_storage.erase(key);
 		}
 
-		const Key& replace_candidate() const { return frequency_storage.cbegin()->second; }
+		const Key& replace_candidate() const { return frequency_storage.begin()->second; }
 	};
 }

@@ -22,7 +22,7 @@ namespace Policy
 			key_finder[key] = lru_queue.begin();
 		}
 
-		void touch(const Key& key) { if(lru_queue.size() > 1) lru_queue.splice(lru_queue.begin(), lru_queue, key_finder[key]); }
+		void touch(const Key& key) { lru_queue.splice(lru_queue.begin(), lru_queue, key_finder[key]); }
 
 		void erase(const Key& key)
 		{
