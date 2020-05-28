@@ -1,7 +1,7 @@
 #include <string>
 
 #include "Cache/Cache.h"
-#include "Cache/LRUCachePolicy.h"
+#include "Cache/Policy/LRU.h"
 
 #define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
@@ -9,7 +9,7 @@
 TEST_CASE("Cache w/ LRU replacement policy: Preconditions", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, LRUCachePolicy<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
 
 	SECTION("Original size is 0")
 	{
@@ -17,9 +17,13 @@ TEST_CASE("Cache w/ LRU replacement policy: Preconditions", "[cache]")
 		CHECK(cache.empty());
 	}
 
-	SECTION("Original Hit & Miss ratio are NaN")
+	SECTION("Original stats are set to zero")
 	{
+		CHECK(cache.access_count() == 0);
+		CHECK(cache.evicted_count() == 0);
 		CHECK(cache.hit_count () == 0);
+		CHECK(cache.entry_invalidation_count() == 0);
+		CHECK(cache.cache_invalidation_count() == 0);
 		CHECK(cache.miss_count() == 0);
 
 		CHECK(std::isnan(cache.hit_ratio ()));
@@ -35,7 +39,7 @@ TEST_CASE("Cache w/ LRU replacement policy: Preconditions", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: Size", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, LRUCachePolicy<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
 
 	SECTION("Size grows after each insertion")
 	{
@@ -89,12 +93,29 @@ TEST_CASE("Cache w/ LRU replacement policy: Size", "[cache]")
 		cache.clear();
 		CHECK(cache.size() == 0);
 	}
+
+	SECTION("clear() invalidates all entries")
+	{
+		REQUIRE(cache.size() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		REQUIRE(cache.size() != 0);
+		REQUIRE(cache.entry_invalidation_count() == 0);
+		REQUIRE(cache.cache_invalidation_count() == 0);
+
+		cache.clear();
+
+		CHECK(cache.entry_invalidation_count() == 0);
+		CHECK(cache.cache_invalidation_count() == 1);
+	}
 }
 
 TEST_CASE("Cache w/ LRU replacement policy: Hits & misses", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, LRUCachePolicy<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
 
 	SECTION("Every new insertion counts as a miss")
 	{
@@ -116,7 +137,7 @@ TEST_CASE("Cache w/ LRU replacement policy: Hits & misses", "[cache]")
 
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 		{
-			cache.has(std::to_string(i));
+			cache.exists(std::to_string(i));
 			CHECK(cache.hit_count() == i);
 		}
 
@@ -124,7 +145,7 @@ TEST_CASE("Cache w/ LRU replacement policy: Hits & misses", "[cache]")
 		CHECK(cache.miss_count() == MAX_SIZE);
 	}
 
-	SECTION("Every access to non-existing items counts as a miss (using has)")
+	SECTION("Every access to non-existing items counts as a miss (using exists)")
 	{
 		REQUIRE(cache.size() == 0);
 
@@ -135,7 +156,7 @@ TEST_CASE("Cache w/ LRU replacement policy: Hits & misses", "[cache]")
 
 		for(size_t i = MAX_SIZE + 1; i <= 2 * MAX_SIZE; i++)
 		{
-			cache.has(std::to_string(i));
+			cache.exists(std::to_string(i));
 			CHECK(cache.hit_count() == 0);
 			CHECK(cache.miss_count() == i);
 		}
@@ -168,7 +189,7 @@ TEST_CASE("Cache w/ LRU replacement policy: Hits & misses", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: find()", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, LRUCachePolicy<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
 
 	SECTION("find() for an existing item returns != end()")
 	{
@@ -221,32 +242,32 @@ TEST_CASE("Cache w/ LRU replacement policy: find()", "[cache]")
 	}
 }
 
-TEST_CASE("Cache w/ LRU replacement policy: has()", "[cache]")
+TEST_CASE("Cache w/ LRU replacement policy: exists()", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, LRUCachePolicy<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
 
-	SECTION("has() for an existing item returns true")
+	SECTION("exists() for an existing item returns true")
 	{
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
 
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 		{
-			bool has = cache.has(std::to_string(i));
-			CHECK(has == true);
+			bool exists = cache.exists(std::to_string(i));
+			CHECK(exists == true);
 		}
 	}
 
-	SECTION("has() for a non-existing item returns false")
+	SECTION("exists() for a non-existing item returns false")
 	{
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
 
 		for(size_t i = MAX_SIZE + 1; i <= 2 * MAX_SIZE; i++)
 		{
-			bool has = cache.has(std::to_string(i));
-			CHECK(has == false);
+			bool exists = cache.exists(std::to_string(i));
+			CHECK(exists == false);
 		}
 	}
 }
@@ -254,7 +275,7 @@ TEST_CASE("Cache w/ LRU replacement policy: has()", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: flush()", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, LRUCachePolicy<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
 
 	SECTION("flush() resets size to 0")
 	{
@@ -266,6 +287,22 @@ TEST_CASE("Cache w/ LRU replacement policy: flush()", "[cache]")
 		REQUIRE(cache.size() != 0);
 		cache.flush();
 		CHECK(cache.size() == 0);
+	}
+
+	SECTION("flush() invalidates all entries")
+	{
+		REQUIRE(cache.size() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		REQUIRE(cache.entry_invalidation_count() == 0);
+		REQUIRE(cache.cache_invalidation_count() == 0);
+
+		cache.flush();
+
+		CHECK(cache.entry_invalidation_count() == 0);
+		CHECK(cache.cache_invalidation_count() == 1);
 	}
 
 	SECTION("flush(key) reduces size by 1")
@@ -283,6 +320,20 @@ TEST_CASE("Cache w/ LRU replacement policy: flush()", "[cache]")
 		CHECK(cache.size() == old_size - 1);
 	}
 
+	SECTION("flush(key) invalidates 1 object")
+	{
+		REQUIRE(cache.size() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		size_t old_inv = cache.entry_invalidation_count();
+
+		REQUIRE(cache.entry_invalidation_count() == old_inv);
+		cache.flush(std::to_string((rand() % 128) + 1));
+		CHECK(cache.entry_invalidation_count() == old_inv + 1);
+	}
+
 	SECTION("Flushed key is not cached")
 	{
 		REQUIRE(cache.size() == 0);
@@ -295,8 +346,8 @@ TEST_CASE("Cache w/ LRU replacement policy: flush()", "[cache]")
 		REQUIRE(cache.miss_count() == miss_count);
 		std::string key = std::to_string((rand() % 128) + 1);
 		cache.flush(key);
-		bool has = cache.has(key);
-		CHECK(has == false);
+		bool exists = cache.exists(key);
+		CHECK(exists == false);
 		CHECK(cache.miss_count() == miss_count + 1);
 	}
 }
@@ -304,7 +355,7 @@ TEST_CASE("Cache w/ LRU replacement policy: flush()", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: erase()", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, LRUCachePolicy<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
 
 	SECTION("erase(key) reduces size by 1")
 	{
@@ -333,8 +384,8 @@ TEST_CASE("Cache w/ LRU replacement policy: erase()", "[cache]")
 		REQUIRE(cache.miss_count() == miss_count);
 		std::string key = std::to_string((rand() % 128) + 1);
 		cache.erase(key);
-		bool has = cache.has(key);
-		CHECK(has == false);
+		bool exists = cache.exists(key);
+		CHECK(exists == false);
 		CHECK(cache.miss_count() == miss_count + 1);
 	}
 }
@@ -342,7 +393,7 @@ TEST_CASE("Cache w/ LRU replacement policy: erase()", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: at()", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, LRUCachePolicy<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
 
 	SECTION("at() return value for existing keys")
 	{
@@ -369,7 +420,7 @@ TEST_CASE("Cache w/ LRU replacement policy: at()", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: LRU behaviour", "[cache][lru]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, LRUCachePolicy<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
 
 	SECTION("Replaced item is the least recently used (1/4)")
 	{
@@ -379,7 +430,7 @@ TEST_CASE("Cache w/ LRU replacement policy: LRU behaviour", "[cache][lru]")
 		REQUIRE(cache.size() == cache.max_size());
 
 		cache.insert("asdf", 42);
-		CHECK(cache.has("1") == false);
+		CHECK(cache.exists("1") == false);
 	}
 
 	SECTION("Replaced item is the least recently used (2/4)")
@@ -389,9 +440,9 @@ TEST_CASE("Cache w/ LRU replacement policy: LRU behaviour", "[cache][lru]")
 
 		REQUIRE(cache.size() == cache.max_size());
 
-		CHECK(cache.has("1") == true);
+		CHECK(cache.exists("1") == true);
 		cache.insert("asdf", 42);
-		CHECK(cache.has("2") == false);
+		CHECK(cache.exists("2") == false);
 	}
 
 	SECTION("Replaced item is the least recently used (3/4)")
@@ -400,12 +451,12 @@ TEST_CASE("Cache w/ LRU replacement policy: LRU behaviour", "[cache][lru]")
 			cache.insert(std::to_string(i), (int)i);
 
 		for(size_t i = 1; i <= MAX_SIZE; i++)
-			CHECK(cache.has(std::to_string(i)) == true);
+			REQUIRE(cache.exists(std::to_string(i)) == true);
 
 		REQUIRE(cache.size() == cache.max_size());
 
 		cache.insert("asdf", 42);
-		CHECK(cache.has("1") == false);
+		CHECK(cache.exists("1") == false);
 	}
 
 	SECTION("Replaced item is the least recently used (4/4)")
@@ -414,11 +465,11 @@ TEST_CASE("Cache w/ LRU replacement policy: LRU behaviour", "[cache][lru]")
 			cache.insert(std::to_string(i), (int)i);
 
 		for(size_t i = 1; i <= MAX_SIZE; i++)
-			CHECK(cache.find(std::to_string(i)) != cache.end());
+			REQUIRE(cache.find(std::to_string(i)) != cache.end());
 
 		REQUIRE(cache.size() == cache.max_size());
 
 		cache.insert("asdf", 42);
-		CHECK(cache.has("1") == false);
+		CHECK(cache.exists("1") == false);
 	}
 }
