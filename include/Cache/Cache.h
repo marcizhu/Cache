@@ -3,7 +3,7 @@
 #include <map>
 #include <stdexcept>
 
-#include "NoCachePolicy.h"
+#include "Policy/None.h"
 
 template<typename Key, typename Value, typename CachePolicy = NoCachePolicy<Key>>
 class Cache
