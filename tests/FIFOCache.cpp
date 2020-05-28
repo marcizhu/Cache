@@ -417,7 +417,7 @@ TEST_CASE("Cache w/ FIFO replacement policy: at()", "[cache]")
 	}
 }
 
-TEST_CASE("Cache w/ FIFO replacement policy: FIFO behaviour", "[cache]")
+TEST_CASE("Cache w/ FIFO replacement policy: FIFO behaviour", "[cache][fifo]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int, Policy::FIFO<std::string>> cache(MAX_SIZE);
@@ -428,10 +428,13 @@ TEST_CASE("Cache w/ FIFO replacement policy: FIFO behaviour", "[cache]")
 			cache.insert(std::to_string(i), (int)i);
 
 		REQUIRE(cache.size() == cache.max_size());
+		REQUIRE(cache.evicted_count() == 0);
 
 		CHECK(cache.exists("1") == true);
+
 		cache.insert("asdf", 42);
 		CHECK(cache.exists("1") == false);
+		CHECK(cache.evicted_count() == 1);
 	}
 
 	SECTION("Replaced item is the first in (2/4)")
@@ -439,12 +442,14 @@ TEST_CASE("Cache w/ FIFO replacement policy: FIFO behaviour", "[cache]")
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
 
-		REQUIRE(cache.exists("1") == true);
 		REQUIRE(cache.size() == cache.max_size());
+		REQUIRE(cache.evicted_count() == 0);
 
 		CHECK(cache.exists("1") == true);
+
 		cache.insert("asdf", 42);
 		CHECK(cache.exists("1") == false);
+		CHECK(cache.evicted_count() == 1);
 	}
 
 	SECTION("Replaced item is the first in (3/4)")
@@ -452,14 +457,17 @@ TEST_CASE("Cache w/ FIFO replacement policy: FIFO behaviour", "[cache]")
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
 
+		REQUIRE(cache.size() == cache.max_size());
+		REQUIRE(cache.evicted_count() == 0);
+
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			REQUIRE(cache.exists(std::to_string(i)) == true);
 
-		REQUIRE(cache.size() == cache.max_size());
-
 		CHECK(cache.exists("1") == true);
+
 		cache.insert("asdf", 42);
 		CHECK(cache.exists("1") == false);
+		CHECK(cache.evicted_count() == 1);
 	}
 
 	SECTION("Replaced item is the first in (4/4)")
@@ -467,13 +475,16 @@ TEST_CASE("Cache w/ FIFO replacement policy: FIFO behaviour", "[cache]")
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
 
+		REQUIRE(cache.size() == cache.max_size());
+		REQUIRE(cache.evicted_count() == 0);
+
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			REQUIRE(cache.find(std::to_string(i)) != cache.end());
 
-		REQUIRE(cache.size() == cache.max_size());
-
 		CHECK(cache.exists("1") == true);
+
 		cache.insert("asdf", 42);
 		CHECK(cache.exists("1") == false);
+		CHECK(cache.evicted_count() == 1);
 	}
 }

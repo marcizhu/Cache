@@ -416,12 +416,12 @@ TEST_CASE("Cache w/ no replacement policy: at()", "[cache]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: default behaviour", "[cache][lru]")
+TEST_CASE("Cache w/ no replacement policy: default behaviour", "[cache][none]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int> cache(MAX_SIZE);
 
-	SECTION("Replaced item is the first lexicographically")
+	SECTION("Replaced item is the first lexicographically (1/2)")
 	{
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
@@ -432,5 +432,22 @@ TEST_CASE("Cache w/ no replacement policy: default behaviour", "[cache][lru]")
 		cache.insert("asdf", 42);
 		CHECK(cache.exists("1") == false);
 		CHECK(cache.evicted_count() == 1);
+	}
+
+	SECTION("Replaced item is the first lexicographically (1/2)")
+	{
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		REQUIRE(cache.size() == cache.max_size());
+		REQUIRE(cache.evicted_count() == 0);
+
+		cache.insert("0", 69);
+		CHECK(cache.exists("0") == true);
+		CHECK(cache.exists("1") == false);
+		CHECK(cache.evicted_count() == 1);
+		cache.insert("asdf", 42);
+		CHECK(cache.exists("0") == false);
+		CHECK(cache.evicted_count() == 2);
 	}
 }

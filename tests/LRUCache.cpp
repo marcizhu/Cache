@@ -428,9 +428,11 @@ TEST_CASE("Cache w/ LRU replacement policy: LRU behaviour", "[cache][lru]")
 			cache.insert(std::to_string(i), (int)i);
 
 		REQUIRE(cache.size() == cache.max_size());
+		REQUIRE(cache.evicted_count() == 0);
 
 		cache.insert("asdf", 42);
 		CHECK(cache.exists("1") == false);
+		CHECK(cache.evicted_count() == 1);
 	}
 
 	SECTION("Replaced item is the least recently used (2/4)")
@@ -439,10 +441,13 @@ TEST_CASE("Cache w/ LRU replacement policy: LRU behaviour", "[cache][lru]")
 			cache.insert(std::to_string(i), (int)i);
 
 		REQUIRE(cache.size() == cache.max_size());
+		REQUIRE(cache.evicted_count() == 0);
 
 		CHECK(cache.exists("1") == true);
+
 		cache.insert("asdf", 42);
 		CHECK(cache.exists("2") == false);
+		CHECK(cache.evicted_count() == 1);
 	}
 
 	SECTION("Replaced item is the least recently used (3/4)")
@@ -454,9 +459,11 @@ TEST_CASE("Cache w/ LRU replacement policy: LRU behaviour", "[cache][lru]")
 			REQUIRE(cache.exists(std::to_string(i)) == true);
 
 		REQUIRE(cache.size() == cache.max_size());
+		REQUIRE(cache.evicted_count() == 0);
 
 		cache.insert("asdf", 42);
 		CHECK(cache.exists("1") == false);
+		CHECK(cache.evicted_count() == 1);
 	}
 
 	SECTION("Replaced item is the least recently used (4/4)")
@@ -468,8 +475,10 @@ TEST_CASE("Cache w/ LRU replacement policy: LRU behaviour", "[cache][lru]")
 			REQUIRE(cache.find(std::to_string(i)) != cache.end());
 
 		REQUIRE(cache.size() == cache.max_size());
+		REQUIRE(cache.evicted_count() == 0);
 
 		cache.insert("asdf", 42);
 		CHECK(cache.exists("1") == false);
+		CHECK(cache.evicted_count() == 1);
 	}
 }
