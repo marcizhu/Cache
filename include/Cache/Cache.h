@@ -1,19 +1,37 @@
 #pragma once
 
+#include <limits>
 #include <map>
+#include <mutex>
 #include <stdexcept>
 
 #include "Policy/None.h"
+#include "Stats/Basic.h"
 
-template<typename Key, typename Value, typename CachePolicy = NoCachePolicy<Key>>
+// missing policies: RandomReplacementPolicy, TLRU (Time-aware LRU), and ARC (Adaptive Replacement Cache)
+
+struct NullLock
+{
+	void lock() {}
+	bool try_lock() { return true; }
+	void unlock() {}
+};
+
+template<
+	typename Key,                             // Key type
+	typename Value,                           // Value type
+	typename CachePolicy = Policy::None<Key>, // Cache policy
+	typename Lock = NullLock,                 // Lock type (for multithreading)
+	typename StatsProvider = Stats::Basic     // Statistics measurement object
+>
 class Cache
 {
 private:
+	const size_t m_MaxSize;
 	std::map<Key, Value> m_Cache;
 	mutable CachePolicy m_CachePolicy;
-	const size_t m_MaxSize;
-	mutable unsigned int m_HitCount;
-	mutable unsigned int m_MissCount;
+	mutable StatsProvider m_Stats;
+	mutable Lock m_Lock;
 
 public:
 	using iterator               = typename std::map<Key, Value>::iterator;
@@ -28,11 +46,12 @@ public:
 	using difference_type        = typename std::map<Key, Value>::difference_type;
 	using size_type              = typename std::map<Key, Value>::size_type;
 
-	Cache(const size_t maxSize, const CachePolicy& policy = CachePolicy())
-		: m_CachePolicy(policy), m_MaxSize(maxSize), m_HitCount(0), m_MissCount(0)
-	{
-		if(m_MaxSize == 0) throw std::invalid_argument("Invalid cache size!");
-	}
+	Cache(const size_t max_size,
+		const CachePolicy& policy = CachePolicy(),
+		const Lock& lock = Lock(),
+		const StatsProvider& stats = StatsProvider())
+		: m_MaxSize(max_size == 0 ? std::numeric_limits<size_t>::max() : max_size), m_CachePolicy(policy), m_Stats(stats), m_Lock(lock)
+	{}
 
 	~Cache() { clear(); }
 
@@ -57,14 +76,17 @@ public:
 	size_type size() { return m_Cache.size(); }
 	size_type max_size() { return m_MaxSize; }
 
-		  mapped_type& at(const key_type& key)       { m_HitCount++; return m_Cache.at(key); }
-	const mapped_type& at(const key_type& key) const { m_HitCount++; return m_Cache.at(std::forward(key)); }
+		  mapped_type& at(const key_type& key)       { std::lock_guard<Lock> lock(m_Lock); m_Stats.hit(); return m_Cache.at(key); }
+	const mapped_type& at(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); m_Stats.hit(); return m_Cache.at(std::forward(key)); }
 
 	size_type erase(const key_type& key)
 	{
-		auto it = find_key(key);
+		std::lock_guard<Lock> lock(m_Lock);
 
-		//onErase(it->first, it->second);
+		auto it = find_key(key);
+		if(it == end()) return 0ULL;
+
+		m_Stats.flush();
 		m_CachePolicy.erase(key);
 		m_Cache.erase(it);
 
@@ -73,6 +95,7 @@ public:
 
 	void insert(const key_type& key, const mapped_type& value)
 	{
+		std::lock_guard<Lock> lock(m_Lock);
 		auto it = find_key(key);
 
 		if(it == end())
@@ -82,9 +105,9 @@ public:
 				auto replaced_key = m_CachePolicy.replace_candidate();
 				it = find_key(replaced_key);
 
-				//onErase(it->first, it->second);
 				m_CachePolicy.erase(replaced_key);
 				m_Cache.erase(it);
+				m_Stats.evicted();
 			}
 
 			m_CachePolicy.insert(key);
@@ -93,36 +116,42 @@ public:
 		else
 		{
 			m_CachePolicy.touch(key);
-			m_Cache[key] = value;
+			it->second = value;
 		}
 	}
 
 	void clear() noexcept
 	{
-		for(auto it = begin(); it != end(); it++)
-		{
-			//onErase(it->first, it->second);
-			m_CachePolicy.erase(it->first);
-		}
+		std::lock_guard<Lock> lock(m_Lock);
 
+		for(auto it = begin(); it != end(); it++)
+			m_CachePolicy.erase(it->first);
+
+		m_Stats.flush(m_Cache.size());
 		m_Cache.clear();
 	}
 
 	void flush() noexcept { clear(); }
 	void flush(const key_type& key) noexcept { erase(key); }
 
-	iterator       find(const key_type& key)       { return find_key(key); }
-	const_iterator find(const key_type& key) const { return find_key(key); }
+	iterator       find(const key_type& key)       { std::lock_guard<Lock> lock(m_Lock); return find_key(key); }
+	const_iterator find(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key); }
 
-	bool has(const key_type& key) const { return find_key(key) != end(); }
+	bool exists(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key) != end(); }
 
-	size_type count(const key_type& key) const { return m_Cache.count(key); }
+	size_type count(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return m_Cache.count(key); }
 
-	size_type hit_count () const noexcept { return m_HitCount; }
-	size_type miss_count() const noexcept { return m_MissCount; }
+	size_type hit_count() const noexcept { return m_Stats.hit_count(); }
+	size_type miss_count() const noexcept { return m_Stats.miss_count(); }
+	size_type access_count() const noexcept { return m_Stats.hit_count() + m_Stats.miss_count(); }
+	size_type entry_invalidation_count() const noexcept { return m_Stats.entry_invalidation_count(); }
+	size_type cache_invalidation_count() const noexcept { return m_Stats.cache_invalidation_count(); }
+	size_type evicted_count() const noexcept { return m_Stats.evicted_count(); }
 
-	float hit_ratio () const noexcept { return static_cast<float>(m_HitCount ) / (static_cast<float>(m_HitCount + m_MissCount)); }
-	float miss_ratio() const noexcept { return static_cast<float>(m_MissCount) / (static_cast<float>(m_HitCount + m_MissCount)); }
+	float hit_ratio () const noexcept { return static_cast<float>(hit_count() ) / (static_cast<float>(hit_count() + miss_count())); }
+	float miss_ratio() const noexcept { return static_cast<float>(miss_count()) / (static_cast<float>(hit_count() + miss_count())); }
+
+	float utilization() const noexcept { return static_cast<float>(m_Cache.size()) / static_cast<float>(m_MaxSize); }
 
 private:
 	iterator find_key(const key_type& key)
@@ -130,8 +159,8 @@ private:
 		auto it = m_Cache.find(key);
 
 		return (it != end() ?
-			(m_HitCount++, m_CachePolicy.touch(key), it) :
-			(m_MissCount++, it));
+			(m_Stats.hit(), m_CachePolicy.touch(key), it) :
+			(m_Stats.miss(), it));
 	}
 
 	const_iterator find_key(const key_type& key) const
@@ -139,7 +168,7 @@ private:
 		auto it = m_Cache.find(key);
 
 		return (it != end() ?
-			(m_HitCount++, m_CachePolicy.touch(key), it) :
-			(m_MissCount++, it));
+			(m_Stats.hit(), m_CachePolicy.touch(key), it) :
+			(m_Stats.miss(), it));
 	}
 };
