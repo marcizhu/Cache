@@ -124,9 +124,7 @@ public:
 	{
 		std::lock_guard<Lock> lock(m_Lock);
 
-		for(auto it = begin(); it != end(); it++)
-			m_CachePolicy.erase(it->first);
-
+		m_CachePolicy.clear();
 		m_Cache.clear();
 		m_Stats.clear();
 	}

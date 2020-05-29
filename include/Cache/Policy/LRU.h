@@ -16,6 +16,8 @@ namespace Policy
 		LRU() = default;
 		~LRU() = default;
 
+		void clear() { lru_queue.clear(); key_finder.clear(); }
+
 		void insert(const Key& key)
 		{
 			lru_queue.emplace_front(key);

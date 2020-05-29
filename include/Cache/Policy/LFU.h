@@ -18,6 +18,8 @@ namespace Policy
 		LFU() = default;
 		~LFU() = default;
 
+		void clear() { frequency_storage.clear(); lfu_storage.clear(); }
+
 		void insert(const Key& key)
 		{
 			constexpr size_t INITIAL_VALUE = 1;
