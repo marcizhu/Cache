@@ -12,9 +12,8 @@
 
 struct NullLock
 {
-	void lock() {}
-	bool try_lock() { return true; }
-	void unlock() {}
+	void lock() const noexcept {}
+	void unlock() const noexcept {}
 };
 
 template<
@@ -41,8 +40,6 @@ public:
 	using mapped_type            = typename std::unordered_map<Key, Value>::mapped_type;
 	using reference              = typename std::unordered_map<Key, Value>::reference;
 	using const_reference        = typename std::unordered_map<Key, Value>::const_reference;
-//	using reverse_iterator       = typename std::unordered_map<Key, Value>::reverse_iterator;
-//	using const_reverse_iterator = typename std::unordered_map<Key, Value>::const_reverse_iterator;
 	using difference_type        = typename std::unordered_map<Key, Value>::difference_type;
 	using size_type              = typename std::unordered_map<Key, Value>::size_type;
 
@@ -55,21 +52,13 @@ public:
 
 	~Cache() { clear(); }
 
-	iterator       begin()       noexcept { return m_Cache.begin(); }
+	      iterator begin()       noexcept { return m_Cache.begin(); }
 	const_iterator begin() const noexcept { return m_Cache.begin(); }
-	iterator       end  ()       noexcept { return m_Cache.end  (); }
+	      iterator end  ()       noexcept { return m_Cache.end  (); }
 	const_iterator end  () const noexcept { return m_Cache.end  (); }
-
-//	reverse_iterator       rbegin()       noexcept { return m_Cache.rbegin(); }
-//	const_reverse_iterator rbegin() const noexcept { return m_Cache.rbegin(); }
-//	reverse_iterator       rend  ()       noexcept { return m_Cache.rend  (); }
-//	const_reverse_iterator rend  () const noexcept { return m_Cache.rend  (); }
 
 	const_iterator cbegin() const noexcept { return m_Cache.cbegin(); }
 	const_iterator cend  () const noexcept { return m_Cache.cend  (); }
-
-//	const_reverse_iterator crbegin() const noexcept { return m_Cache.crbegin(); }
-//	const_reverse_iterator crend  () const noexcept { return m_Cache.crend  (); }
 
 	bool empty() { return m_Cache.empty(); }
 
@@ -103,7 +92,7 @@ public:
 			if(size() + 1 > m_MaxSize)
 			{
 				auto replaced_key = m_CachePolicy.replace_candidate();
-				it = find_key(replaced_key);
+				it = m_Cache.find(replaced_key);
 
 				m_CachePolicy.erase(replaced_key);
 				m_Cache.erase(it);
@@ -132,12 +121,12 @@ public:
 	void flush() noexcept { clear(); }
 	void flush(const key_type& key) noexcept { erase(key); }
 
-	iterator       find(const key_type& key)       { std::lock_guard<Lock> lock(m_Lock); return find_key(key); }
-	const_iterator find(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key); }
-
 	bool exists(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key) != end(); }
 
 	size_type count(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return m_Cache.count(key); }
+
+	      iterator find(const key_type& key)       { std::lock_guard<Lock> lock(m_Lock); return find_key(key); }
+	const_iterator find(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key); }
 
 	size_type hit_count() const noexcept { return m_Stats.hit_count(); }
 	size_type miss_count() const noexcept { return m_Stats.miss_count(); }
