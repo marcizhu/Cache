@@ -11,7 +11,7 @@ endif()
 #---------------------------------------------------------------------------------------
 # compiler config
 #---------------------------------------------------------------------------------------
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -20,11 +20,11 @@ option(CACHE_BUILD_TESTS "Build unit tests" OFF)
 
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
+add_library(Cache INTERFACE)
+target_include_directories(Cache INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 if(CACHE_BUILD_TESTS)
 	enable_testing()
 	add_subdirectory(tests)
 	add_subdirectory(deps/Catch2)
 endif()
-
-add_library(Cache INTERFACE)
-target_include_directories(Cache INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)

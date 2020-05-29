@@ -13,6 +13,7 @@
 struct NullLock
 {
 	void lock() const noexcept {}
+	bool try_lock() const noexcept { return true; }
 	void unlock() const noexcept {}
 };
 
@@ -55,8 +56,8 @@ public:
 		: m_MaxSize(other.m_MaxSize)
 	{
 		std::lock(m_Lock, other.m_Lock);
-		std::lock_guard<std::mutex> lhs_lk(m_Lock, std::adopt_lock);
-		std::lock_guard<std::mutex> rhs_lk(other.m_Lock, std::adopt_lock);
+		std::lock_guard<Lock> lhs_lk(m_Lock, std::adopt_lock);
+		std::lock_guard<Lock> rhs_lk(other.m_Lock, std::adopt_lock);
 
 		m_Cache = other.m_Cache;
 		m_Stats = other.m_Stats;
@@ -87,7 +88,7 @@ public:
 		std::lock_guard<Lock> lock(m_Lock);
 		auto it = find_key(key);
 
-		if(it == end()) return 0ULL;
+		if(it == m_Cache.end()) return 0ULL;
 
 		m_CachePolicy.erase(key);
 		m_Cache.erase(it);
@@ -103,9 +104,9 @@ public:
 		std::lock_guard<Lock> lock(m_Lock);
 		auto it = find_key(key);
 
-		if(it == end())
+		if(it == m_Cache.end())
 		{
-			if(size() + 1 > m_MaxSize)
+			if(m_Cache.size() + 1 > m_MaxSize)
 			{
 				auto replaced_key = m_CachePolicy.replace_candidate();
 				it = m_Cache.find(replaced_key);
@@ -137,7 +138,7 @@ public:
 	void flush() noexcept { clear(); }
 	void flush(const key_type& key) noexcept { erase(key); }
 
-	bool exists(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key) != end(); }
+	bool exists(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key) != m_Cache.end(); }
 
 	size_type count(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return m_Cache.count(key); }
 
@@ -151,16 +152,16 @@ public:
 	size_type cache_invalidation_count() const noexcept { return m_Stats.cache_invalidation_count(); }
 	size_type evicted_count() const noexcept { return m_Stats.evicted_count(); }
 
-	constexpr float hit_ratio  () const noexcept { return static_cast<float>(hit_count ())   / (static_cast<float>(hit_count() + miss_count())); }
-	constexpr float miss_ratio () const noexcept { return static_cast<float>(miss_count())   / (static_cast<float>(hit_count() + miss_count())); }
-	constexpr float utilization() const noexcept { return static_cast<float>(m_Cache.size()) /  static_cast<float>(m_MaxSize); }
+	float hit_ratio  () const noexcept { return static_cast<float>(hit_count ())   / (static_cast<float>(hit_count() + miss_count())); }
+	float miss_ratio () const noexcept { return static_cast<float>(miss_count())   / (static_cast<float>(hit_count() + miss_count())); }
+	float utilization() const noexcept { return static_cast<float>(m_Cache.size()) /  static_cast<float>(m_MaxSize); }
 
 private:
 	iterator find_key(const key_type& key)
 	{
 		auto it = m_Cache.find(key);
 
-		return (it != end() ?
+		return (it != m_Cache.end() ?
 			(m_Stats.hit(), m_CachePolicy.touch(key), it) :
 			(m_Stats.miss(), it));
 	}
@@ -169,7 +170,7 @@ private:
 	{
 		auto it = m_Cache.find(key);
 
-		return (it != end() ?
+		return (it != m_Cache.end() ?
 			(m_Stats.hit(), m_CachePolicy.touch(key), it) :
 			(m_Stats.miss(), it));
 	}
