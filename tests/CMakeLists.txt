@@ -10,7 +10,7 @@ endif()
 #---------------------------------------------------------------------------------------
 # compiler config
 #---------------------------------------------------------------------------------------
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -53,9 +53,9 @@ endif()
 #---------------------------------------------------------------------------------------
 if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 	target_compile_options(Basic.test PUBLIC -O0 -g --coverage)
-	target_compile_options(LRU.test PUBLIC -O0 -g --coverage)
-	target_compile_options(LFU.test PUBLIC -O0 -g --coverage)
-	target_compile_options(FIFO.test PUBLIC -O0 -g --coverage)
+	target_compile_options(LRU.test   PUBLIC -O0 -g --coverage)
+	target_compile_options(LFU.test   PUBLIC -O0 -g --coverage)
+	target_compile_options(FIFO.test  PUBLIC -O0 -g --coverage)
 
 	if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
 		target_link_options(Basic.test PUBLIC --coverage)

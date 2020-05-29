@@ -9,7 +9,7 @@
 TEST_CASE("Cache w/ LRU replacement policy: Preconditions", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU> cache(MAX_SIZE);
 
 	SECTION("Original size is 0")
 	{
@@ -39,7 +39,7 @@ TEST_CASE("Cache w/ LRU replacement policy: Preconditions", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: Size", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU> cache(MAX_SIZE);
 
 	SECTION("Size grows after each insertion")
 	{
@@ -127,7 +127,7 @@ TEST_CASE("Cache w/ LRU replacement policy: Size", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: Hits & misses", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU> cache(MAX_SIZE);
 
 	SECTION("Every new insertion counts as a miss")
 	{
@@ -210,7 +210,7 @@ TEST_CASE("Cache w/ LRU replacement policy: Hits & misses", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: find()", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU> cache(MAX_SIZE);
 
 	SECTION("find() for an existing item returns != end()")
 	{
@@ -266,7 +266,7 @@ TEST_CASE("Cache w/ LRU replacement policy: find()", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: exists()", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU> cache(MAX_SIZE);
 
 	SECTION("exists() for an existing item returns true")
 	{
@@ -296,7 +296,7 @@ TEST_CASE("Cache w/ LRU replacement policy: exists()", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: flush()", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU> cache(MAX_SIZE);
 
 	SECTION("flush() resets size to 0")
 	{
@@ -410,7 +410,7 @@ TEST_CASE("Cache w/ LRU replacement policy: flush()", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: erase()", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU> cache(MAX_SIZE);
 
 	SECTION("erase(key) reduces size by 1")
 	{
@@ -482,7 +482,7 @@ TEST_CASE("Cache w/ LRU replacement policy: erase()", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: at()", "[cache]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU> cache(MAX_SIZE);
 
 	SECTION("at() return value for existing keys")
 	{
@@ -509,7 +509,7 @@ TEST_CASE("Cache w/ LRU replacement policy: at()", "[cache]")
 TEST_CASE("Cache w/ LRU replacement policy: LRU behaviour", "[cache][lru]")
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int, Policy::LRU<std::string>> cache(MAX_SIZE);
+	Cache<std::string, int, Policy::LRU> cache(MAX_SIZE);
 
 	SECTION("Replaced item is the least recently used (1/4)")
 	{

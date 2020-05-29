@@ -8,7 +8,7 @@
 #include "Policy/None.h"
 #include "Stats/Basic.h"
 
-// missing policies: RandomReplacementPolicy, TLRU (Time-aware LRU), and ARC (Adaptive Replacement Cache)
+// missing policies: TLRU (Time-aware LRU), and ARC (Adaptive Replacement Cache)
 
 struct NullLock
 {
@@ -17,56 +17,70 @@ struct NullLock
 };
 
 template<
-	typename Key,                             // Key type
-	typename Value,                           // Value type
-	typename CachePolicy = Policy::None<Key>, // Cache policy
-	typename Lock = NullLock,                 // Lock type (for multithreading)
-	typename StatsProvider = Stats::Basic     // Statistics measurement object
+	typename Key,                                        // Key type
+	typename Value,                                      // Value type
+	template<typename> class CachePolicy = Policy::None, // Cache policy
+	typename Lock = NullLock,                            // Lock type (for multithreading)
+	typename StatsProvider = Stats::Basic                // Statistics measurement object
 >
 class Cache
 {
 private:
+	using underlying_storage = std::unordered_map<Key, Value>;
+
 	const size_t m_MaxSize;
-	std::unordered_map<Key, Value> m_Cache;
-	mutable CachePolicy m_CachePolicy;
+	underlying_storage m_Cache;
+	mutable CachePolicy<Key> m_CachePolicy;
 	mutable StatsProvider m_Stats;
 	mutable Lock m_Lock;
 
 public:
-	using iterator               = typename std::unordered_map<Key, Value>::iterator;
-	using const_iterator         = typename std::unordered_map<Key, Value>::const_iterator;
-	using key_type               = typename std::unordered_map<Key, Value>::key_type;
-	using value_type             = typename std::unordered_map<Key, Value>::value_type;
-	using mapped_type            = typename std::unordered_map<Key, Value>::mapped_type;
-	using reference              = typename std::unordered_map<Key, Value>::reference;
-	using const_reference        = typename std::unordered_map<Key, Value>::const_reference;
-	using difference_type        = typename std::unordered_map<Key, Value>::difference_type;
-	using size_type              = typename std::unordered_map<Key, Value>::size_type;
+	using iterator        = typename underlying_storage::iterator;
+	using const_iterator  = typename underlying_storage::const_iterator;
+	using key_type        = typename underlying_storage::key_type;
+	using value_type      = typename underlying_storage::value_type;
+	using mapped_type     = typename underlying_storage::mapped_type;
+	using reference       = typename underlying_storage::reference;
+	using const_reference = typename underlying_storage::const_reference;
+	using difference_type = typename underlying_storage::difference_type;
+	using size_type       = typename underlying_storage::size_type;
 
-	Cache(const size_t max_size,
-		const CachePolicy& policy = CachePolicy(),
-		const Lock& lock = Lock(),
-		const StatsProvider& stats = StatsProvider())
-		: m_MaxSize(max_size == 0 ? std::numeric_limits<size_t>::max() : max_size), m_CachePolicy(policy), m_Stats(stats), m_Lock(lock)
+	Cache(const size_t max_size, const CachePolicy<Key>& policy = CachePolicy<Key>(), const StatsProvider& stats = StatsProvider())
+		: m_MaxSize(max_size == 0 ? std::numeric_limits<size_t>::max() : max_size), m_CachePolicy(policy), m_Stats(stats), m_Lock()
 	{}
 
-	~Cache() { clear(); }
+	~Cache() = default;
 
-	      iterator begin()       noexcept { return m_Cache.begin(); }
-	const_iterator begin() const noexcept { return m_Cache.begin(); }
-	      iterator end  ()       noexcept { return m_Cache.end  (); }
-	const_iterator end  () const noexcept { return m_Cache.end  (); }
+	Cache(const Cache& other)
+		: m_MaxSize(other.m_MaxSize)
+	{
+		std::lock(m_Lock, other.m_Lock);
+		std::lock_guard<std::mutex> lhs_lk(m_Lock, std::adopt_lock);
+		std::lock_guard<std::mutex> rhs_lk(other.m_Lock, std::adopt_lock);
 
-	const_iterator cbegin() const noexcept { return m_Cache.cbegin(); }
-	const_iterator cend  () const noexcept { return m_Cache.cend  (); }
+		m_Cache = other.m_Cache;
+		m_Stats = other.m_Stats;
+		m_CachePolicy = other.m_CachePolicy;
+	}
 
-	bool empty() { return m_Cache.empty(); }
+	      iterator begin()       noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.begin(); }
+	const_iterator begin() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.begin(); }
+	      iterator end  ()       noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.end  (); }
+	const_iterator end  () const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.end  (); }
 
-	size_type size() { return m_Cache.size(); }
-	size_type max_size() { return m_MaxSize; }
+	const_iterator cbegin() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.cbegin(); }
+	const_iterator cend  () const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.cend  (); }
+
+	bool empty() { std::lock_guard<Lock> lock(m_Lock); return m_Cache.empty(); }
+
+	size_type size() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.size(); }
+	constexpr size_type max_size() const noexcept { return m_MaxSize; }
 
 	      mapped_type& at(const key_type& key)       { std::lock_guard<Lock> lock(m_Lock); m_Stats.hit(); return m_Cache.at(key); }
-	const mapped_type& at(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); m_Stats.hit(); return m_Cache.at(std::forward(key)); }
+	const mapped_type& at(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); m_Stats.hit(); return m_Cache.at(key); }
+
+	      mapped_type& lookup(const key_type& key)       { return at(key); }
+	const mapped_type& lookup(const key_type& key) const { return at(key); }
 
 	size_type erase(const key_type& key)
 	{
@@ -82,7 +96,9 @@ public:
 		return 1ULL;
 	}
 
-	void insert(const key_type& key, const mapped_type& value)
+	// TODO: emplace()
+
+	void insert(const key_type& key, const mapped_type& value) noexcept
 	{
 		std::lock_guard<Lock> lock(m_Lock);
 		auto it = find_key(key);
@@ -100,7 +116,7 @@ public:
 			}
 
 			m_CachePolicy.insert(key);
-			m_Cache.emplace(std::make_pair(key, value));
+			m_Cache.insert(std::make_pair(key, value));
 		}
 		else
 		{
@@ -135,9 +151,9 @@ public:
 	size_type cache_invalidation_count() const noexcept { return m_Stats.cache_invalidation_count(); }
 	size_type evicted_count() const noexcept { return m_Stats.evicted_count(); }
 
-	float hit_ratio  () const noexcept { return static_cast<float>(hit_count ())   / (static_cast<float>(hit_count() + miss_count())); }
-	float miss_ratio () const noexcept { return static_cast<float>(miss_count())   / (static_cast<float>(hit_count() + miss_count())); }
-	float utilization() const noexcept { return static_cast<float>(m_Cache.size()) /  static_cast<float>(m_MaxSize); }
+	constexpr float hit_ratio  () const noexcept { return static_cast<float>(hit_count ())   / (static_cast<float>(hit_count() + miss_count())); }
+	constexpr float miss_ratio () const noexcept { return static_cast<float>(miss_count())   / (static_cast<float>(hit_count() + miss_count())); }
+	constexpr float utilization() const noexcept { return static_cast<float>(m_Cache.size()) /  static_cast<float>(m_MaxSize); }
 
 private:
 	iterator find_key(const key_type& key)
