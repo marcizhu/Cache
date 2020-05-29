@@ -4,15 +4,16 @@ namespace Stats
 {
 	struct None
 	{
-		void hit    (size_t = 1) {}
-		void miss   (size_t = 1) {}
-		void flush  (size_t = 1) {}
-		void evicted(size_t = 1) {}
+		constexpr void hit  () const noexcept {}
+		constexpr void miss () const noexcept {}
+		constexpr void erase() const noexcept {}
+		constexpr void clear() const noexcept {}
+		constexpr void evict() const noexcept {}
 
-		size_t hit_count() const noexcept { return 0ULL; }
-		size_t miss_count() const noexcept { return 0ULL; }
-		size_t entry_invalidation_count() const noexcept { return 0ULL; }
-		size_t cache_invalidation_count() const noexcept { return 0ULL; }
-		size_t evicted_count() const noexcept { return 0ULL; }
+		constexpr size_t hit_count() const noexcept { return 0ULL; }
+		constexpr size_t miss_count() const noexcept { return 0ULL; }
+		constexpr size_t entry_invalidation_count() const noexcept { return 0ULL; }
+		constexpr size_t cache_invalidation_count() const noexcept { return 0ULL; }
+		constexpr size_t evicted_count() const noexcept { return 0ULL; }
 	};
 }

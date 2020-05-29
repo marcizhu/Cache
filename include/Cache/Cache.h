@@ -86,9 +86,9 @@ public:
 
 		if(it == end()) return 0ULL;
 
-		m_Stats.flush();
 		m_CachePolicy.erase(key);
 		m_Cache.erase(it);
+		m_Stats.erase();
 
 		return 1ULL;
 	}
@@ -107,7 +107,7 @@ public:
 
 				m_CachePolicy.erase(replaced_key);
 				m_Cache.erase(it);
-				m_Stats.evicted();
+				m_Stats.evict();
 			}
 
 			m_CachePolicy.insert(key);
@@ -127,8 +127,8 @@ public:
 		for(auto it = begin(); it != end(); it++)
 			m_CachePolicy.erase(it->first);
 
-		m_Stats.flush(m_Cache.size());
 		m_Cache.clear();
+		m_Stats.clear();
 	}
 
 	void flush() noexcept { clear(); }
