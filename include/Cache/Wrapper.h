@@ -19,7 +19,7 @@ namespace detail
 	>
 	inline auto make_cache(const std::tuple<Args...>& args, std::index_sequence<Indices...>)
 	{
-		return Cache<Key, Value, CachePolicy, Lock, Stats::None>(std::forward<Args>(std::get<Indices>(args))...);
+		return Cache<Key, Value, CachePolicy, Lock, Stats::None>(std::get<Indices>(args)...);
 	}
 
 	template<
@@ -44,7 +44,7 @@ template<
 auto wrap(Function fn, Args&&... args)
 {
 	return
-		[fn, cache_args = std::forward_as_tuple(std::forward<Args>(args)...)]
+		[fn, cache_args = std::make_tuple(args...)]
 		(auto&&... arguments) mutable
 		{
 			using Arguments = std::tuple<std::decay_t<decltype(arguments)>...>;
