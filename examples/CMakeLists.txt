@@ -1,0 +1,8 @@
+add_executable(function_wrapping function_wrapping.cpp)
+add_executable(dynamic_programming dynamic_programming.cpp)
+add_executable(statistics statistics.cpp)
+
+
+target_link_libraries(function_wrapping PRIVATE Cache)
+target_link_libraries(dynamic_programming PRIVATE Cache)
+target_link_libraries(statistics PRIVATE Cache)
