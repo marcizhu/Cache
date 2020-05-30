@@ -25,6 +25,7 @@ TEST_CASE("Cache w/ LFU replacement policy: Preconditions", "[cache][pre]")
 		CHECK(cache.entry_invalidation_count() == 0);
 		CHECK(cache.cache_invalidation_count() == 0);
 		CHECK(cache.miss_count() == 0);
+		CHECK(cache.utilization() == 0.0f);
 
 		CHECK(std::isnan(cache.hit_ratio ()));
 		CHECK(std::isnan(cache.miss_ratio()));
@@ -578,7 +579,7 @@ TEST_CASE("Cache w/ LFU replacement policy: operator[]", "[cache][operator]")
 		for(size_t i = 2; i <= MAX_SIZE; i++)
 			CHECK(cache[std::to_string(i)] == (int)i);
 
-		CHECK(cache[std::to_string(2 * MAX_SIZE)] == 2 * MAX_SIZE);
+		CHECK(cache[std::to_string(2 * MAX_SIZE)] == (int)(2 * MAX_SIZE));
 	}
 
 	SECTION("operator[] returns the value if the key contains (3/3)")

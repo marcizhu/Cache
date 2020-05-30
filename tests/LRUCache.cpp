@@ -25,6 +25,7 @@ TEST_CASE("Cache w/ LRU replacement policy: Preconditions", "[cache][pre]")
 		CHECK(cache.entry_invalidation_count() == 0);
 		CHECK(cache.cache_invalidation_count() == 0);
 		CHECK(cache.miss_count() == 0);
+		CHECK(cache.utilization() == 0.0f);
 
 		CHECK(std::isnan(cache.hit_ratio ()));
 		CHECK(std::isnan(cache.miss_ratio()));
