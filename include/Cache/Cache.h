@@ -36,19 +36,23 @@ private:
 	mutable Lock m_Lock;
 
 public:
-	using iterator        = typename underlying_storage::iterator;
-	using const_iterator  = typename underlying_storage::const_iterator;
 	using key_type        = typename underlying_storage::key_type;
-	using value_type      = typename underlying_storage::value_type;
 	using mapped_type     = typename underlying_storage::mapped_type;
+	using value_type      = typename underlying_storage::value_type;
 	using reference       = typename underlying_storage::reference;
 	using const_reference = typename underlying_storage::const_reference;
-	using difference_type = typename underlying_storage::difference_type;
+	using pointer         = typename underlying_storage::pointer;
+	using const_pointer   = typename underlying_storage::const_pointer;
+	using iterator        = typename underlying_storage::iterator;
+	using const_iterator  = typename underlying_storage::const_iterator;
 	using size_type       = typename underlying_storage::size_type;
+	using difference_type = typename underlying_storage::difference_type;
 
 	Cache(const size_t max_size, const CachePolicy<Key>& policy = CachePolicy<Key>(), const StatsProvider& stats = StatsProvider())
 		: m_MaxSize(max_size == 0 ? std::numeric_limits<size_t>::max() : max_size), m_CachePolicy(policy), m_Stats(stats), m_Lock()
-	{}
+	{
+		m_Cache.reserve(std::min(m_MaxSize, m_Cache.max_size()));
+	}
 
 	~Cache() = default;
 
@@ -83,23 +87,64 @@ public:
 	      mapped_type& lookup(const key_type& key)       { return at(key); }
 	const mapped_type& lookup(const key_type& key) const { return at(key); }
 
+	      mapped_type& operator[](const Key& key)       { return (insert(key, mapped_type()).first)->second; }
+	const mapped_type& operator[](const Key& key) const { return (insert(key, mapped_type()).first)->second; }
+
+	void erase(iterator pos) { std::lock_guard<Lock> lock(m_Lock); m_CachePolicy.erase(pos->first); m_Cache.erase(pos); m_Stats.erase(); }
+
+	template<typename Iterator>
+	void erase(Iterator begin, Iterator end)
+	{
+		for(; begin != end; ++begin)
+			erase(begin);
+	}
+
 	size_type erase(const key_type& key)
 	{
 		std::lock_guard<Lock> lock(m_Lock);
 		auto it = find_key(key);
 
-		if(it == m_Cache.end()) return 0ULL;
+		if(it == m_Cache.end()) return 0;
 
 		m_CachePolicy.erase(key);
 		m_Cache.erase(it);
 		m_Stats.erase();
 
-		return 1ULL;
+		return 1;
 	}
 
 	// TODO: emplace()
 
-	void insert(const key_type& key, const mapped_type& value) noexcept
+	template<typename Iterator>
+	size_t insert(Iterator begin, Iterator end)
+	{
+		size_t newly_inserted = 0;
+		for(; begin != end; ++begin)
+		{
+			const auto result = insert(begin->first, begin->second);
+			newly_inserted += result.second;
+		}
+
+		return newly_inserted;
+	}
+
+	template<typename Range>
+	size_t insert(Range&& range)
+	{
+		size_t newly_inserted = 0;
+		for (auto& pair : range)
+		{
+			const auto result = emplace(std::move(pair.first), std::move(pair.second));
+			newly_inserted += result.second;
+		}
+
+		return newly_inserted;
+	}
+
+	std::pair<iterator,bool> insert(const value_type& val) { return insert(val.first, val.second); }
+	size_t insert(std::initializer_list<mapped_type> list) { return insert(list.begin(), list.end()); }
+
+	std::pair<iterator, bool> insert(const key_type& key, const mapped_type& value) noexcept
 	{
 		std::lock_guard<Lock> lock(m_Lock);
 		auto it = find_key(key);
@@ -117,12 +162,12 @@ public:
 			}
 
 			m_CachePolicy.insert(key);
-			m_Cache.insert(std::make_pair(key, value));
+			return m_Cache.insert(std::make_pair(key, value));
 		}
 		else
 		{
 			m_CachePolicy.touch(key);
-			it->second = value;
+			return { it, false };
 		}
 	}
 
@@ -138,7 +183,7 @@ public:
 	void flush() noexcept { clear(); }
 	void flush(const key_type& key) noexcept { erase(key); }
 
-	bool exists(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key) != m_Cache.end(); }
+	bool contains(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key) != m_Cache.end(); }
 
 	size_type count(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return m_Cache.count(key); }
 

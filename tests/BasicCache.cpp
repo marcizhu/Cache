@@ -5,7 +5,7 @@
 #define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 
-TEST_CASE("Cache w/ no replacement policy: Preconditions", "[cache]")
+TEST_CASE("Cache w/ no replacement policy: Preconditions", "[cache][pre]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int> cache(MAX_SIZE);
@@ -35,7 +35,7 @@ TEST_CASE("Cache w/ no replacement policy: Preconditions", "[cache]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: Size", "[cache]")
+TEST_CASE("Cache w/ no replacement policy: Size", "[cache][size][clear][empty]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int> cache(MAX_SIZE);
@@ -123,7 +123,7 @@ TEST_CASE("Cache w/ no replacement policy: Size", "[cache]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: Hits & misses", "[cache]")
+TEST_CASE("Cache w/ no replacement policy: Hits & misses", "[cache][stats][hit][miss]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int> cache(MAX_SIZE);
@@ -156,7 +156,7 @@ TEST_CASE("Cache w/ no replacement policy: Hits & misses", "[cache]")
 
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 		{
-			cache.exists(std::to_string(i));
+			cache.contains(std::to_string(i));
 			CHECK(cache.hit_count() == i);
 			CHECK(cache.miss_count() == MAX_SIZE);
 		}
@@ -165,7 +165,7 @@ TEST_CASE("Cache w/ no replacement policy: Hits & misses", "[cache]")
 		CHECK(cache.miss_count() == MAX_SIZE);
 	}
 
-	SECTION("Every access to non-existing items counts as a miss (using exists)")
+	SECTION("Every access to non-existing items counts as a miss (using contains)")
 	{
 		REQUIRE(cache.size() == 0);
 
@@ -176,7 +176,7 @@ TEST_CASE("Cache w/ no replacement policy: Hits & misses", "[cache]")
 
 		for(size_t i = MAX_SIZE + 1; i <= 2 * MAX_SIZE; i++)
 		{
-			cache.exists(std::to_string(i));
+			cache.contains(std::to_string(i));
 			CHECK(cache.hit_count() == 0);
 			CHECK(cache.miss_count() == i);
 		}
@@ -206,7 +206,7 @@ TEST_CASE("Cache w/ no replacement policy: Hits & misses", "[cache]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: find()", "[cache]")
+TEST_CASE("Cache w/ no replacement policy: find()", "[cache][find]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int> cache(MAX_SIZE);
@@ -262,37 +262,37 @@ TEST_CASE("Cache w/ no replacement policy: find()", "[cache]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: exists()", "[cache]")
+TEST_CASE("Cache w/ no replacement policy: contains()", "[cache][contains]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int> cache(MAX_SIZE);
 
-	SECTION("exists() for an existing item returns true")
+	SECTION("contains() for an existing item returns true")
 	{
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
 
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 		{
-			bool exists = cache.exists(std::to_string(i));
-			CHECK(exists == true);
+			bool contains = cache.contains(std::to_string(i));
+			CHECK(contains == true);
 		}
 	}
 
-	SECTION("exists() for a non-existing item returns false")
+	SECTION("contains() for a non-existing item returns false")
 	{
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
 
 		for(size_t i = MAX_SIZE + 1; i <= 2 * MAX_SIZE; i++)
 		{
-			bool exists = cache.exists(std::to_string(i));
-			CHECK(exists == false);
+			bool contains = cache.contains(std::to_string(i));
+			CHECK(contains == false);
 		}
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: flush()", "[cache]")
+TEST_CASE("Cache w/ no replacement policy: flush()", "[cache][flush]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int> cache(MAX_SIZE);
@@ -366,8 +366,8 @@ TEST_CASE("Cache w/ no replacement policy: flush()", "[cache]")
 		REQUIRE(cache.miss_count() == miss_count);
 		std::string key = std::to_string(((size_t)rand() % MAX_SIZE) + 1);
 		cache.flush(key);
-		bool exists = cache.exists(key);
-		CHECK(exists == false);
+		bool contains = cache.contains(key);
+		CHECK(contains == false);
 		CHECK(cache.miss_count() == miss_count + 1);
 	}
 
@@ -406,7 +406,7 @@ TEST_CASE("Cache w/ no replacement policy: flush()", "[cache]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: erase()", "[cache]")
+TEST_CASE("Cache w/ no replacement policy: erase()", "[cache][erase]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int> cache(MAX_SIZE);
@@ -438,8 +438,8 @@ TEST_CASE("Cache w/ no replacement policy: erase()", "[cache]")
 		REQUIRE(cache.miss_count() == miss_count);
 		std::string key = std::to_string(((size_t)rand() % MAX_SIZE) + 1);
 		cache.erase(key);
-		bool exists = cache.exists(key);
-		CHECK(exists == false);
+		bool contains = cache.contains(key);
+		CHECK(contains == false);
 		CHECK(cache.miss_count() == miss_count + 1);
 	}
 
@@ -478,7 +478,7 @@ TEST_CASE("Cache w/ no replacement policy: erase()", "[cache]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: at()", "[cache]")
+TEST_CASE("Cache w/ no replacement policy: at()", "[cache][at]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int> cache(MAX_SIZE);
@@ -505,7 +505,89 @@ TEST_CASE("Cache w/ no replacement policy: at()", "[cache]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: default behaviour", "[cache][none]")
+TEST_CASE("Cache w/ no replacement policy: operator[]", "[cache][operator]")
+{
+	constexpr size_t MAX_SIZE = 128;
+	Cache<std::string, int> cache(MAX_SIZE);
+
+	SECTION("operator[] inserts items if the key is not present")
+	{
+		REQUIRE(cache.size() == 0);
+		REQUIRE(cache.max_size() == MAX_SIZE);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+		{
+			cache[std::to_string(i)] = (int)i;
+			CHECK(cache.size() == i);
+			CHECK(cache.at(std::to_string(i)) == (int)i);
+		}
+
+		CHECK(cache.size() == MAX_SIZE);
+		CHECK(cache.max_size() == MAX_SIZE);
+	}
+
+	SECTION("operator[] default constructs a new item")
+	{
+		REQUIRE(cache.size() == 0);
+		REQUIRE(cache.max_size() == MAX_SIZE);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+		{
+			cache[std::to_string(i)];
+			CHECK(cache[std::to_string(i)] == int());
+		}
+
+		CHECK(cache.size() == MAX_SIZE);
+		CHECK(cache.max_size() == MAX_SIZE);
+	}
+
+	SECTION("operator[] returns the value if the key contains (1/3)")
+	{
+		REQUIRE(cache.size() == 0);
+		REQUIRE(cache.max_size() == MAX_SIZE);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache[std::to_string(i)] = (int)i;
+
+		REQUIRE(cache.size() == MAX_SIZE);
+		REQUIRE(cache.max_size() == MAX_SIZE);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			CHECK(cache[std::to_string(i)] == (int)i);
+	}
+
+	SECTION("operator[] returns the value if the key contains (2/3)")
+	{
+		REQUIRE(cache.size() == 0);
+		REQUIRE(cache.max_size() == MAX_SIZE);
+
+		for(size_t i = 1; i <= 2 * MAX_SIZE; i++)
+			cache[std::to_string(i)] = (int)i;
+
+		CHECK(cache.size() == MAX_SIZE);
+		CHECK(cache.max_size() == MAX_SIZE);
+
+		for(auto it = cache.begin(); it != cache.end(); it++)
+			CHECK(cache[std::to_string(it->second)] == (int)it->second);
+	}
+
+	SECTION("operator[] returns the value if the key contains (3/3)")
+	{
+		REQUIRE(cache.size() == 0);
+		REQUIRE(cache.max_size() == MAX_SIZE);
+
+		for(size_t i = 1; i <= 10 * MAX_SIZE; i++)
+		{
+			cache[std::to_string(i)] = (int)i;
+			CHECK(cache[std::to_string(i)] == (int)i);
+		}
+
+		CHECK(cache.size() == MAX_SIZE);
+		CHECK(cache.max_size() == MAX_SIZE);
+	}
+}
+
+TEST_CASE("Cache w/ no replacement policy: default behaviour", "[cache][behaviour]")
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int> cache(MAX_SIZE);
@@ -519,7 +601,7 @@ TEST_CASE("Cache w/ no replacement policy: default behaviour", "[cache][none]")
 		REQUIRE(cache.evicted_count() == 0);
 
 		cache.insert("asdf", 42);
-		CHECK(cache.exists("1") == false);
+		CHECK(cache.contains("1") == false);
 		CHECK(cache.evicted_count() == 1);
 	}
 
@@ -532,11 +614,11 @@ TEST_CASE("Cache w/ no replacement policy: default behaviour", "[cache][none]")
 		REQUIRE(cache.evicted_count() == 0);
 
 		cache.insert("0", 69);
-		CHECK(cache.exists("0") == true);
-		CHECK(cache.exists("1") == false);
+		CHECK(cache.contains("0") == true);
+		CHECK(cache.contains("1") == false);
 		CHECK(cache.evicted_count() == 1);
 		cache.insert("asdf", 42);
-		CHECK(cache.exists("0") == false);
+		CHECK(cache.contains("0") == false);
 		CHECK(cache.evicted_count() == 2);
 	}
 }
