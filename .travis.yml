@@ -1,0 +1,53 @@
+language: cpp
+os: linux
+dist: bionic
+
+jobs:
+  include:
+    - os: linux
+      compiler: clang
+      env: COVERAGE=OFF
+
+    - os: linux
+      compiler: gcc
+      env: COVERAGE=OFF
+
+    - os: osx
+      env: COVERAGE=OFF
+
+    - os: windows
+      env: COVERAGE=OFF
+
+    - os: linux
+      dist: bionic
+      addons:
+        apt:
+          packages: lcov
+      compiler: gcc
+      env: COVERAGE=ON
+      after_success:
+        # Run unit tests
+        - ctest -V
+        # Create lcov report
+        # capture coverage info
+        - lcov --directory . --capture --output-file coverage.info
+        # filter out system and extra files.
+        - lcov --remove coverage.info '/usr/*' '*/deps/*' --output-file coverage.info
+        # output coverage data for debugging
+        - lcov --list coverage.info
+        # Uploading to CodeCov
+        - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
+
+script:
+  # Create build folder
+  - mkdir build && cd build
+  # Configure
+  - cmake -DCODE_COVERAGE=$COVERAGE -DCMAKE_BUILD_TYPE=Debug -DCACHE_BUILD_TESTS=$COVERAGE ..
+  # Build & test
+  - if [ "$TRAVIS_OS_NAME" = "osx"     ]; then cmake --build . --config Debug -- -j4 ; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux"   ]; then cmake --build . --config Debug -- -j $(nproc) ; fi
+  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then cmake --build . --config Debug ; fi
+
+notifications:
+  email:
+    - marcizhu@gmail.com
