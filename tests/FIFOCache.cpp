@@ -130,7 +130,7 @@ TEST_CASE("Cache w/ FIFO replacement policy: Hits & misses", "[cache][stats][hit
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int, Policy::FIFO> cache(MAX_SIZE);
 
-	SECTION("Every new insertion counts as a miss")
+	SECTION("Every new insertion is not a miss nor a hit")
 	{
 		REQUIRE(cache.size() == 0);
 		REQUIRE(cache.hit_count () == 0);
@@ -140,7 +140,7 @@ TEST_CASE("Cache w/ FIFO replacement policy: Hits & misses", "[cache][stats][hit
 		{
 			cache.insert(std::to_string(i), (int)i);
 			CHECK(cache.hit_count () == 0);
-			CHECK(cache.miss_count() == i);
+			CHECK(cache.miss_count() == 0);
 		}
 	}
 
@@ -154,17 +154,17 @@ TEST_CASE("Cache w/ FIFO replacement policy: Hits & misses", "[cache][stats][hit
 			cache.insert(std::to_string(i), (int)i);
 
 		REQUIRE(cache.hit_count () == 0);
-		REQUIRE(cache.miss_count() == MAX_SIZE);
+		REQUIRE(cache.miss_count() == 0);
 
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 		{
 			cache.contains(std::to_string(i));
 			CHECK(cache.hit_count() == i);
-			CHECK(cache.miss_count() == MAX_SIZE);
+			CHECK(cache.miss_count() == 0);
 		}
 
 		CHECK(cache.hit_count() == MAX_SIZE);
-		CHECK(cache.miss_count() == MAX_SIZE);
+		CHECK(cache.miss_count() == 0);
 	}
 
 	SECTION("Every access to non-existing items counts as a miss (using contains)")
@@ -174,17 +174,18 @@ TEST_CASE("Cache w/ FIFO replacement policy: Hits & misses", "[cache][stats][hit
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
 
-		REQUIRE(cache.miss_count() == MAX_SIZE);
+		REQUIRE(cache.hit_count () == 0);
+		REQUIRE(cache.miss_count() == 0);
 
 		for(size_t i = MAX_SIZE + 1; i <= 2 * MAX_SIZE; i++)
 		{
 			cache.contains(std::to_string(i));
 			CHECK(cache.hit_count() == 0);
-			CHECK(cache.miss_count() == i);
+			CHECK(cache.miss_count() == i - MAX_SIZE);
 		}
 
 		CHECK(cache.hit_count() == 0);
-		CHECK(cache.miss_count() == 2 * MAX_SIZE);
+		CHECK(cache.miss_count() == MAX_SIZE);
 	}
 
 	SECTION("Every access to non-existing items counts as a miss (using find)")
@@ -194,17 +195,18 @@ TEST_CASE("Cache w/ FIFO replacement policy: Hits & misses", "[cache][stats][hit
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
 
-		REQUIRE(cache.miss_count() == MAX_SIZE);
+		REQUIRE(cache.hit_count () == 0);
+		REQUIRE(cache.miss_count() == 0);
 
 		for(size_t i = MAX_SIZE + 1; i <= 2 * MAX_SIZE; i++)
 		{
 			cache.find(std::to_string(i));
 			CHECK(cache.hit_count() == 0);
-			CHECK(cache.miss_count() == i);
+			CHECK(cache.miss_count() == i - MAX_SIZE);
 		}
 
 		CHECK(cache.hit_count() == 0);
-		CHECK(cache.miss_count() == 2 * MAX_SIZE);
+		CHECK(cache.miss_count() == MAX_SIZE);
 	}
 }
 

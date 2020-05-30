@@ -147,7 +147,7 @@ public:
 	std::pair<iterator, bool> insert(const key_type& key, const mapped_type& value) noexcept
 	{
 		std::lock_guard<Lock> lock(m_Lock);
-		auto it = find_key(key);
+		auto it = m_Cache.find(key);
 
 		if(it == m_Cache.end())
 		{
