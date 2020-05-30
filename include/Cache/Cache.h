@@ -6,6 +6,7 @@
 
 #include "Policy/None.h"
 #include "Stats/Basic.h"
+#include "detail/utility.h"
 
 // missing policies: TLRU (Time-aware LRU), and ARC (Adaptive Replacement Cache)
 
@@ -114,7 +115,44 @@ public:
 		return 1;
 	}
 
-	// TODO: emplace()
+  	template<typename... Ks, typename... Vs>
+	std::pair<iterator, bool> emplace(std::piecewise_construct_t, const std::tuple<Ks...>& key_arguments, const std::tuple<Vs...>& value_arguments)
+	{
+		std::lock_guard<Lock> lock(m_Lock);
+
+		auto key = detail::construct_from_tuple<key_type>(key_arguments);
+		auto it = m_Cache.find(key);
+
+		if(it == m_Cache.end())
+		{
+			if(m_Cache.size() + 1 > m_MaxSize)
+			{
+				auto replaced_key = m_CachePolicy.replace_candidate();
+				it = m_Cache.find(replaced_key);
+
+				m_CachePolicy.erase(replaced_key);
+				m_Cache.erase(it);
+				m_Stats.evict(it->first, it->second);
+			}
+
+			auto val = detail::construct_from_tuple<mapped_type>(value_arguments);
+			m_CachePolicy.insert(key);
+			return m_Cache.emplace(std::move(key), std::move(val));
+		}
+		else
+		{
+			m_CachePolicy.touch(key);
+			return { it, false };
+		}
+	}
+
+	template<typename K, typename V>
+	std::pair<iterator, bool> emplace(K&& key_args, V&& val_args)
+	{
+		auto key_tuple = std::forward_as_tuple(std::forward<K>(key_args));
+		auto val_tuple = std::forward_as_tuple(std::forward<V>(val_args));
+		return emplace(std::piecewise_construct, key_tuple, val_tuple);
+	}
 
 	template<typename Iterator>
 	size_t insert(Iterator begin, Iterator end)
@@ -184,9 +222,8 @@ public:
 	void flush() noexcept { clear(); }
 	void flush(const key_type& key) noexcept { erase(key); }
 
-	bool contains(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key) != m_Cache.end(); }
-
-	size_type count(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return m_Cache.count(key); }
+	bool   contains(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key) != m_Cache.end(); }
+	size_type count(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key) != m_Cache.end(); }
 
 	      iterator find(const key_type& key)       { std::lock_guard<Lock> lock(m_Lock); return find_key(key); }
 	const_iterator find(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return find_key(key); }

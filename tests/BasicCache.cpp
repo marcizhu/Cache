@@ -209,6 +209,37 @@ TEST_CASE("Cache w/ no replacement policy: Hits & misses", "[cache][stats][hit][
 	}
 }
 
+TEST_CASE("Cache w/ no replacement policy: emplace()", "[cache][emplace]")
+{
+	constexpr size_t MAX_SIZE = 128;
+	Cache<std::string, int> cache(MAX_SIZE);
+
+	SECTION("Size grows after each emplace()")
+	{
+		REQUIRE(cache.size() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+		{
+			cache.insert(std::to_string(i), (int)i);
+			CHECK(cache.size() == i);
+		}
+	}
+
+	SECTION("Every emplace() is not a miss nor a hit")
+	{
+		REQUIRE(cache.size() == 0);
+		REQUIRE(cache.hit_count () == 0);
+		REQUIRE(cache.miss_count() == 0);
+
+		for(size_t i = 1; i <= 10 * MAX_SIZE; i++)
+		{
+			cache.emplace(std::to_string(i), (int)i);
+			CHECK(cache.hit_count () == 0);
+			CHECK(cache.miss_count() == 0);
+		}
+	}
+}
+
 TEST_CASE("Cache w/ no replacement policy: find()", "[cache][find]")
 {
 	constexpr size_t MAX_SIZE = 128;
