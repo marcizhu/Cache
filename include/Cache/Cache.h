@@ -2,7 +2,6 @@
 
 #include <limits>
 #include <mutex>
-#include <stdexcept>
 #include <unordered_map>
 
 #include "Policy/None.h"
@@ -51,7 +50,8 @@ public:
 	Cache(const size_t max_size, const CachePolicy<Key>& policy = CachePolicy<Key>(), const StatsProvider<Key, Value>& stats = StatsProvider<Key, Value>())
 		: m_MaxSize(max_size == 0 ? std::numeric_limits<size_t>::max() : max_size), m_CachePolicy(policy), m_Stats(stats), m_Lock()
 	{
-		m_Cache.reserve(std::min(m_MaxSize, m_Cache.max_size()));
+		static constexpr size_t MAX_RESERVE_SIZE = 1024;
+		m_Cache.reserve(m_MaxSize < MAX_RESERVE_SIZE ? m_MaxSize : MAX_RESERVE_SIZE);
 	}
 
 	~Cache() = default;
