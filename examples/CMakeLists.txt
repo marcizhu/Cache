@@ -1,8 +1,15 @@
 add_executable(function_wrapping function_wrapping.cpp)
 add_executable(dynamic_programming dynamic_programming.cpp)
 add_executable(statistics statistics.cpp)
-
+add_executable(disable_stats disable_statistics.cpp)
+add_executable(custom_stats custom_statistics.cpp)
+add_executable(custom_callbacks custom_callbacks.cpp)
+add_executable(advanced_custom_callbacks advanced_custom_callbacks.cpp)
 
 target_link_libraries(function_wrapping PRIVATE Cache)
 target_link_libraries(dynamic_programming PRIVATE Cache)
 target_link_libraries(statistics PRIVATE Cache)
+target_link_libraries(disable_stats PRIVATE Cache)
+target_link_libraries(custom_stats PRIVATE Cache)
+target_link_libraries(custom_callbacks PRIVATE Cache)
+target_link_libraries(advanced_custom_callbacks PRIVATE Cache)

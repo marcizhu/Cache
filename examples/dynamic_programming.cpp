@@ -31,8 +31,9 @@ std::uint64_t cached_fibonacci(std::uint64_t n, Cache& cache)
 
 std::uint64_t cached_fibonacci(std::uint64_t n)
 {
-	// This is a small wrapper function that will store a cache for our cached_fibonacci() function.
-	// It will forward this cache to the 'client' function
+	// This is a small wrapper function that will store a cache for our
+	// cached_fibonacci() function. It will forward this cache to the 'client'
+	// function
 
 	// We create a cache with 100 entries and LRU replacement policy
 	static Cache<std::uint64_t, std::uint64_t, Policy::LRU> cache(100);

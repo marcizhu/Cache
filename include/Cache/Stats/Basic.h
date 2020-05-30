@@ -4,6 +4,7 @@
 
 namespace Stats
 {
+	template<typename Key, typename Value>
 	class Basic
 	{
 	private:
@@ -14,11 +15,11 @@ namespace Stats
 		uint32_t m_InvalCount{};
 
 	public:
-		void hit  () noexcept { m_HitCount++; }
-		void miss () noexcept { m_MissCount++; }
-		void erase() noexcept { m_EraseCount++; }
-		void clear() noexcept { m_InvalCount++; }
-		void evict() noexcept { m_EvctCount++; }
+		void clear()                         noexcept { m_InvalCount++; }
+		void hit  (const Key&, const Value&) noexcept { m_HitCount++; }
+		void miss (const Key&)               noexcept { m_MissCount++; }
+		void erase(const Key&, const Value&) noexcept { m_EraseCount++; }
+		void evict(const Key&, const Value&) noexcept { m_EvctCount++; }
 
 		constexpr size_t hit_count() const noexcept { return m_HitCount; }
 		constexpr size_t miss_count() const noexcept { return m_MissCount; }

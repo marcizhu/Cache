@@ -30,5 +30,7 @@ int main()
 	std::cout << "Fast for the second time!" << std::endl;
 	std::size_t ret2 = cached_ackermann(2, 5);
 
-	std::cout << std::endl << "First result = " << ret1 << ", second result = " << ret2 << std::endl;
+	std::cout << std::endl
+		<< "First result = " << ret1
+		<< ", second result = " << ret2 << std::endl;
 }

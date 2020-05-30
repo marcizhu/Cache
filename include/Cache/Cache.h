@@ -18,11 +18,11 @@ struct NullLock
 };
 
 template<
-	typename Key,                                        // Key type
-	typename Value,                                      // Value type
-	template<typename> class CachePolicy = Policy::None, // Cache policy
-	typename Lock = NullLock,                            // Lock type (for multithreading)
-	typename StatsProvider = Stats::Basic                // Statistics measurement object
+	typename Key,                                            // Key type
+	typename Value,                                          // Value type
+	template<typename> class CachePolicy = Policy::None,     // Cache policy
+	typename Lock = NullLock,                                // Lock type (for multithreading)
+	template<typename...> class StatsProvider = Stats::Basic // Statistics measurement object
 >
 class Cache
 {
@@ -32,7 +32,7 @@ private:
 	const size_t m_MaxSize;
 	underlying_storage m_Cache;
 	mutable CachePolicy<Key> m_CachePolicy;
-	mutable StatsProvider m_Stats;
+	mutable StatsProvider<Key, Value> m_Stats;
 	mutable Lock m_Lock;
 
 public:
@@ -48,7 +48,7 @@ public:
 	using size_type       = typename underlying_storage::size_type;
 	using difference_type = typename underlying_storage::difference_type;
 
-	Cache(const size_t max_size, const CachePolicy<Key>& policy = CachePolicy<Key>(), const StatsProvider& stats = StatsProvider())
+	Cache(const size_t max_size, const CachePolicy<Key>& policy = CachePolicy<Key>(), const StatsProvider<Key, Value>& stats = StatsProvider<Key, Value>())
 		: m_MaxSize(max_size == 0 ? std::numeric_limits<size_t>::max() : max_size), m_CachePolicy(policy), m_Stats(stats), m_Lock()
 	{
 		m_Cache.reserve(std::min(m_MaxSize, m_Cache.max_size()));
@@ -81,8 +81,9 @@ public:
 	size_type size() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.size(); }
 	constexpr size_type max_size() const noexcept { return m_MaxSize; }
 
-	      mapped_type& at(const key_type& key)       { std::lock_guard<Lock> lock(m_Lock); m_Stats.hit(); return m_Cache.at(key); }
-	const mapped_type& at(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); m_Stats.hit(); return m_Cache.at(key); }
+	// TODO: Optimize this!
+	      mapped_type& at(const key_type& key)       { std::lock_guard<Lock> lock(m_Lock); return m_Cache.at(key); }
+	const mapped_type& at(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return m_Cache.at(key); }
 
 	      mapped_type& lookup(const key_type& key)       { return at(key); }
 	const mapped_type& lookup(const key_type& key) const { return at(key); }
@@ -90,7 +91,7 @@ public:
 	      mapped_type& operator[](const Key& key)       { return (insert(key, mapped_type()).first)->second; }
 	const mapped_type& operator[](const Key& key) const { return (insert(key, mapped_type()).first)->second; }
 
-	void erase(iterator pos) { std::lock_guard<Lock> lock(m_Lock); m_CachePolicy.erase(pos->first); m_Cache.erase(pos); m_Stats.erase(); }
+	void erase(iterator pos) { std::lock_guard<Lock> lock(m_Lock); m_CachePolicy.erase(pos->first); m_Cache.erase(pos); m_Stats.erase(pos->first, pos->second); }
 
 	template<typename Iterator>
 	void erase(Iterator begin, Iterator end)
@@ -108,7 +109,7 @@ public:
 
 		m_CachePolicy.erase(key);
 		m_Cache.erase(it);
-		m_Stats.erase();
+		m_Stats.erase(it->first, it->second);
 
 		return 1;
 	}
@@ -158,7 +159,7 @@ public:
 
 				m_CachePolicy.erase(replaced_key);
 				m_Cache.erase(it);
-				m_Stats.evict();
+				m_Stats.evict(it->first, it->second);
 			}
 
 			m_CachePolicy.insert(key);
@@ -207,8 +208,8 @@ private:
 		auto it = m_Cache.find(key);
 
 		return (it != m_Cache.end() ?
-			(m_Stats.hit(), m_CachePolicy.touch(key), it) :
-			(m_Stats.miss(), it));
+			(m_Stats.hit(it->first, it->second), m_CachePolicy.touch(key), it) :
+			(m_Stats.miss(key), it));
 	}
 
 	const_iterator find_key(const key_type& key) const
@@ -216,7 +217,7 @@ private:
 		auto it = m_Cache.find(key);
 
 		return (it != m_Cache.end() ?
-			(m_Stats.hit(), m_CachePolicy.touch(key), it) :
-			(m_Stats.miss(), it));
+			(m_Stats.hit(it->first, it->second), m_CachePolicy.touch(key), it) :
+			(m_Stats.miss(key), it));
 	}
 };

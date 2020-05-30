@@ -67,7 +67,7 @@ script:
   # Create build folder
   - mkdir build && cd build
   # Configure
-  - cmake -DCODE_COVERAGE=$COVERAGE -DCMAKE_BUILD_TYPE=Debug -DCACHE_BUILD_TESTS=ON ..
+  - cmake -DCODE_COVERAGE=$COVERAGE -DCMAKE_BUILD_TYPE=Debug -DCACHE_BUILD_TESTS=ON -DCACHE_BUILD_EXAMPLES=ON ..
   # Build & test
   - if [ "$TRAVIS_OS_NAME" = "osx"     ]; then cmake --build . --config Debug -- -j4 ; fi
   - if [ "$TRAVIS_OS_NAME" = "linux"   ]; then cmake --build . --config Debug -- -j $(nproc) ; fi
