@@ -41,8 +41,8 @@ development. Any kind of input/feedback is always welcome!
 
 ## Background
 When access to resources is limited or expensive, programmers need a way to optimize access to said resources. One way of 
-doing that is to store all data in memory, but most often than not that is impractical. A more optimal approach would be to
-store a small subset of the most used (or most expensive to access) data in a small data structure.
+doing that is to store all data in memory, but more often than not this solution is impractical. A more optimal approach would
+be to store a small subset of the most used (or most expensive to access) data in a small data structure.
 
 That is the intent of this library: to provide a small and simple data structure with a fixed size (but it can be left 
 unbounded too) for caching function call parameters, recursive calls or any type of resources, like game assets, files or
@@ -121,7 +121,7 @@ int main()
 	std::cout << "cached_fibonacci(90) = " << cached_fibonacci(90) << std::endl; // should be 2880067194370816120
 }
 ```
-For more information and an in-depth explaination on how it works, please see [examples/dynamic_programming.cpp]
+For more information and an in-depth explanation on how it works, please see [examples/dynamic_programming.cpp]
 
 The class `Cache` is 100% compatible with a `std::map`/`std::unordered_map`, and can even have an unlimited size (just pass 0
 to the constructor and the size will be unlimited), but it also has some useful "extra" functions, like:
@@ -144,7 +144,7 @@ objects in single-threaded scenarios, which would reduce performance. If you nee
 Cache<std::string, int, Policy::LRU, std::mutex> cache(100);
 ```
 
-As stated earlier, by default the cache is not thread-safe. That is becausee the third template parameter defaults to 
+As stated earlier, by default the cache is not thread-safe. That is because the third template parameter defaults to 
 `NullLock` (defined in Cache/Cache.h), which is a dummy lock that does nothing. You can supply that as the third parameter if
 you want to explicitly disable mutithread synchronization.
 
@@ -211,7 +211,7 @@ Cache<std::string, int, Policy::LRU, NullLock, Stats::None> cache(100);
 ```
 
 Please note that the parameter `NullLock` refers to the lock type and could be `std::mutex` if we wanted the cache to be
-thread-safe. Both parameters are totally independent.
+thread-safe. Both parameters are totally independent. Please, refer to the section for [thread-safe caches](#thread-safe-cache) for more information about `NullLock`, `std::mutex` and thread-safety for this library.
 
 That last template parameter can also be used to provide our own statistics, to have callbacks on hit/miss/evict/clear/erase
 events and much more! Please check [examples/statistics.cpp], [examples/disable_statistics.cpp] and 
@@ -229,7 +229,7 @@ callbacks on certain events. For more information, please see  [examples/custom_
 [examples/custom_callbacks.cpp] and [examples/advanced_custom_callbacks.cpp].
 
 ### Replacement policies
-Replacement policies are in charge of determining what elements get erase to make room for new items once the cache is full.
+Replacement policies are in charge of determining which elements get erase to make room for new items once the cache is full.
 This library provides the following policies, although you could make your own algorithms for your specific application:
 
 - `Policy::FIFO`: (defined inside [`Cache/Policy/FIFO.h`]). Works like a queue: the first element in is the first element out.
@@ -243,7 +243,7 @@ This library provides the following policies, although you could make your own a
 Depending on your application, you might choose different algorithms for your caches. For example, if your data is more likely
 to be accessed the older it is, you might want to use the MRU replacement algorithm. In contrast, if your data is more likely
 to be used the newer it is, LRU is a good candidate here. When in doubt, LRU or LFU are good candidates to start with. 
-Remember, changing the algorithm is so simple as changing the include file and the template parameter!
+Remember, changing the algorithm is as simple as changing the include file and the template parameter!
 
 And, of course, if any of the previous algorithms suite your needs, you can also make your own and pass it to the cache.
 Check out [examples/custom_replacement_policy.cpp] for an in-depth example on writing your own algorithms and creating caches
@@ -251,13 +251,13 @@ that use them.
 
 ### Other examples
 For more examples or details on doing some specific task, please take a look at the [examples/] folder, which is packed with
-examples and explainations for the different features of this library.
+examples and explanations for the different features of this library.
 
 ## Benchmarks
-Comming soon
+Coming soon
 
 ## Alternatives
-This library aims to be as feature-complete as possible, and to cover most use cases. However, we know that sometimes you
+This library aims to be as feature-complete as possible and to cover most use cases. However, we know that sometimes you
 need something more specific. For those cases, you might check out one of the following:
 
 - [goldsborough/lru-cache](https://github.com/goldsborough/lru-cache): A small library providing LRU and TLRU caches, with a similar feature set to this library.
@@ -268,7 +268,7 @@ This library was created and is currently maintained by [marcizhu](https://githu
 If you find any issue with the library, you can either [open an issue](https://github.com/marcizhu/Units/issues) or e-mail me at marcizhu@gmail.com.
 
 ## Credits
-This library uses [Catch2] for unit tests. Thanks to the authors and collaborators of such a great library!
+This library uses [Catch2] for unit tests. Many, many thanks to the authors and collaborators of such a great library!
 
 ## Contributing
 Does this library miss any feature you'd like to have? Have you spotted any bug? PRs are always welcome! Alternatively, you
