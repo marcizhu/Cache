@@ -82,15 +82,14 @@ public:
 	size_type size() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.size(); }
 	constexpr size_type max_size() const noexcept { return m_MaxSize; }
 
-	// TODO: Optimize this!
 	      mapped_type& at(const key_type& key)       { std::lock_guard<Lock> lock(m_Lock); return m_Cache.at(key); }
 	const mapped_type& at(const key_type& key) const { std::lock_guard<Lock> lock(m_Lock); return m_Cache.at(key); }
 
 	      mapped_type& lookup(const key_type& key)       { return at(key); }
 	const mapped_type& lookup(const key_type& key) const { return at(key); }
 
-	      mapped_type& operator[](const Key& key)       { return (insert(key, mapped_type()).first)->second; }
-	const mapped_type& operator[](const Key& key) const { return (insert(key, mapped_type()).first)->second; }
+	      mapped_type& operator[](const Key& key)       { return insert(key, mapped_type()).first->second; }
+	const mapped_type& operator[](const Key& key) const { return insert(key, mapped_type()).first->second; }
 
 	void erase(iterator pos) { std::lock_guard<Lock> lock(m_Lock); m_CachePolicy.erase(pos->first); m_Cache.erase(pos); m_Stats.erase(pos->first, pos->second); }
 
@@ -115,43 +114,33 @@ public:
 		return 1;
 	}
 
-  	template<typename... Ks, typename... Vs>
-	std::pair<iterator, bool> emplace(std::piecewise_construct_t, const std::tuple<Ks...>& key_arguments, const std::tuple<Vs...>& value_arguments)
+  	template<typename... Args>
+	std::pair<iterator, bool> emplace(Args... args)
 	{
 		std::lock_guard<Lock> lock(m_Lock);
+		auto pair = m_Cache.emplace(args...);
 
-		auto key = detail::construct_from_tuple<key_type>(key_arguments);
-		auto it = m_Cache.find(key);
-
-		if(it == m_Cache.end())
+		if(pair.second == true)
 		{
-			if(m_Cache.size() + 1 > m_MaxSize)
+			// item was inserted
+			if(m_Cache.size() > m_MaxSize)
 			{
 				auto replaced_key = m_CachePolicy.replace_candidate();
-				it = m_Cache.find(replaced_key);
+				auto it = m_Cache.find(replaced_key);
 
 				m_CachePolicy.erase(replaced_key);
 				m_Cache.erase(it);
 				m_Stats.evict(it->first, it->second);
 			}
 
-			auto val = detail::construct_from_tuple<mapped_type>(value_arguments);
-			m_CachePolicy.insert(key);
-			return m_Cache.emplace(std::move(key), std::move(val));
+			m_CachePolicy.insert(pair.first->first);
 		}
 		else
 		{
-			m_CachePolicy.touch(key);
-			return { it, false };
+			m_CachePolicy.touch(pair.first->first);
 		}
-	}
 
-	template<typename K, typename V>
-	std::pair<iterator, bool> emplace(K&& key_args, V&& val_args)
-	{
-		auto key_tuple = std::forward_as_tuple(std::forward<K>(key_args));
-		auto val_tuple = std::forward_as_tuple(std::forward<V>(val_args));
-		return emplace(std::piecewise_construct, key_tuple, val_tuple);
+		return pair;
 	}
 
 	template<typename Iterator>
