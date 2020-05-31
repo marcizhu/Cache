@@ -16,6 +16,8 @@ private:
 	std::uint32_t m_Misses{};
 
 public:
+	// All custom statistics classes will have to provide the following functions:
+
 	///////////////////////////////// Setters /////////////////////////////////
 
 	// This function gets called when we flush() or clear() the cache
