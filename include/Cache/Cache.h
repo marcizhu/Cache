@@ -8,8 +8,6 @@
 #include "Stats/Basic.h"
 #include "detail/utility.h"
 
-// missing policies: TLRU (Time-aware LRU), and ARC (Adaptive Replacement Cache)
-
 struct NullLock
 {
 	void lock() const noexcept {}
@@ -48,14 +46,28 @@ public:
 	using size_type       = typename underlying_storage::size_type;
 	using difference_type = typename underlying_storage::difference_type;
 
-	Cache(const size_t max_size, const CachePolicy<Key>& policy = CachePolicy<Key>(), const StatsProvider<Key, Value>& stats = StatsProvider<Key, Value>())
+	Cache(
+		const size_t max_size,
+		const CachePolicy<Key>& policy = CachePolicy<Key>(),
+		const StatsProvider<Key, Value>& stats = StatsProvider<Key, Value>())
 		: m_MaxSize(max_size == 0 ? std::numeric_limits<size_t>::max() : max_size), m_CachePolicy(policy), m_Stats(stats), m_Lock()
 	{
+		std::lock_guard<Lock> lock(m_Lock);
 		static constexpr size_t MAX_RESERVE_SIZE = 1024;
 		m_Cache.reserve(m_MaxSize < MAX_RESERVE_SIZE ? m_MaxSize : MAX_RESERVE_SIZE);
 	}
 
-	~Cache() = default;
+	Cache(
+		const size_t max_size,
+		const Lock& lock,
+		const CachePolicy<Key>& policy = CachePolicy<Key>(),
+		const StatsProvider<Key, Value>& stats = StatsProvider<Key, Value>())
+		: m_MaxSize(max_size == 0 ? std::numeric_limits<size_t>::max() : max_size), m_CachePolicy(policy), m_Stats(stats), m_Lock(lock)
+	{
+		std::lock_guard<Lock> mlock(m_Lock);
+		static constexpr size_t MAX_RESERVE_SIZE = 1024;
+		m_Cache.reserve(m_MaxSize < MAX_RESERVE_SIZE ? m_MaxSize : MAX_RESERVE_SIZE);
+	}
 
 	Cache(const Cache& other)
 		: m_MaxSize(other.m_MaxSize)
@@ -69,15 +81,16 @@ public:
 		m_CachePolicy = other.m_CachePolicy;
 	}
 
-	      iterator begin()       noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.begin(); }
-	const_iterator begin() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.begin(); }
-	      iterator end  ()       noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.end  (); }
-	const_iterator end  () const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.end  (); }
+	~Cache() = default;
 
+	      iterator begin ()       noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.begin(); }
+	const_iterator begin () const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.begin(); }
 	const_iterator cbegin() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.cbegin(); }
-	const_iterator cend  () const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.cend  (); }
+	      iterator end   ()       noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.end(); }
+	const_iterator end   () const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.end(); }
+	const_iterator cend  () const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.cend(); }
 
-	bool empty() { std::lock_guard<Lock> lock(m_Lock); return m_Cache.empty(); }
+	bool empty() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.empty(); }
 
 	size_type size() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.size(); }
 	constexpr size_type max_size() const noexcept { return m_MaxSize; }
@@ -88,16 +101,18 @@ public:
 	      mapped_type& lookup(const key_type& key)       { return at(key); }
 	const mapped_type& lookup(const key_type& key) const { return at(key); }
 
-	      mapped_type& operator[](const Key& key)       { return insert(key, mapped_type()).first->second; }
-	const mapped_type& operator[](const Key& key) const { return insert(key, mapped_type()).first->second; }
+	mapped_type& operator[](const key_type&  key) { return insert(key, mapped_type()).first->second; }
+	mapped_type& operator[](      key_type&& key) { return insert(key, mapped_type()).first->second; }
 
-	void erase(iterator pos) { std::lock_guard<Lock> lock(m_Lock); m_CachePolicy.erase(pos->first); m_Cache.erase(pos); m_Stats.erase(pos->first, pos->second); }
+	iterator erase(iterator pos) { std::lock_guard<Lock> lock(m_Lock); m_CachePolicy.erase(pos->first); m_Stats.erase(pos->first, pos->second); return m_Cache.erase(pos); }
 
-	template<typename Iterator>
-	void erase(Iterator begin, Iterator end)
+	iterator erase(const_iterator first, const_iterator last)
 	{
-		for(; begin != end; ++begin)
-			erase(begin);
+		iterator ret;
+		for(; first != last; ++first)
+			ret = erase(first);
+
+		return ret;
 	}
 
 	size_type erase(const key_type& key)
@@ -115,14 +130,13 @@ public:
 	}
 
   	template<typename... Args>
-	std::pair<iterator, bool> emplace(Args... args)
+	std::pair<iterator, bool> emplace(Args&&... args)
 	{
 		std::lock_guard<Lock> lock(m_Lock);
 		auto pair = m_Cache.emplace(args...);
 
 		if(pair.second == true)
 		{
-			// item was inserted
 			if(m_Cache.size() > m_MaxSize)
 			{
 				auto replaced_key = m_CachePolicy.replace_candidate();
@@ -136,41 +150,20 @@ public:
 			m_CachePolicy.insert(pair.first->first);
 		}
 		else
-		{
 			m_CachePolicy.touch(pair.first->first);
-		}
 
 		return pair;
 	}
 
-	template<typename Iterator>
-	size_t insert(Iterator begin, Iterator end)
+	template<typename InputIt>
+	void insert(InputIt first, InputIt last)
 	{
-		size_t newly_inserted = 0;
-		for(; begin != end; ++begin)
-		{
-			const auto result = insert(begin->first, begin->second);
-			newly_inserted += result.second;
-		}
-
-		return newly_inserted;
+		for(; first != last; ++first)
+			insert(first->first, first->second);
 	}
 
-	template<typename Range>
-	size_t insert(Range&& range)
-	{
-		size_t newly_inserted = 0;
-		for (auto& pair : range)
-		{
-			const auto result = emplace(std::move(pair.first), std::move(pair.second));
-			newly_inserted += result.second;
-		}
-
-		return newly_inserted;
-	}
-
-	std::pair<iterator,bool> insert(const value_type& val) { return insert(val.first, val.second); }
-	size_t insert(std::initializer_list<mapped_type> list) { return insert(list.begin(), list.end()); }
+	void insert(std::initializer_list<value_type> ilist) { insert(ilist.begin(), ilist.end()); }
+	std::pair<iterator, bool> insert(const value_type& val) { return insert(val.first, val.second); }
 
 	std::pair<iterator, bool> insert(const key_type& key, const mapped_type& value) noexcept
 	{
