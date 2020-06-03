@@ -83,12 +83,13 @@ public:
 
 	~Cache() = default;
 
-	      iterator begin ()       noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.begin(); }
-	const_iterator begin () const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.begin(); }
+	      iterator  begin()       noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.begin(); }
+	const_iterator  begin() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.begin(); }
 	const_iterator cbegin() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.cbegin(); }
-	      iterator end   ()       noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.end(); }
-	const_iterator end   () const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.end(); }
-	const_iterator cend  () const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.cend(); }
+
+	      iterator  end()       noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.end(); }
+	const_iterator  end() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.end(); }
+	const_iterator cend() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.cend(); }
 
 	bool empty() const noexcept { std::lock_guard<Lock> lock(m_Lock); return m_Cache.empty(); }
 
@@ -104,15 +105,17 @@ public:
 	mapped_type& operator[](const key_type&  key) { return insert(key, mapped_type()).first->second; }
 	mapped_type& operator[](      key_type&& key) { return insert(key, mapped_type()).first->second; }
 
-	iterator erase(iterator pos) { std::lock_guard<Lock> lock(m_Lock); m_CachePolicy.erase(pos->first); m_Stats.erase(pos->first, pos->second); return m_Cache.erase(pos); }
+	iterator erase(const_iterator pos) { std::lock_guard<Lock> lock(m_Lock); m_CachePolicy.erase(pos->first); m_Stats.erase(pos->first, pos->second); return m_Cache.erase(pos); }
 
 	iterator erase(const_iterator first, const_iterator last)
 	{
-		iterator ret;
-		for(; first != last; ++first)
-			ret = erase(first);
+		for(auto it = first; it != last; ++it)
+		{
+			m_CachePolicy.erase(it->first);
+			m_Stats.erase(it->first, it->second);
+		}
 
-		return ret;
+		return m_Cache.erase(first, last);
 	}
 
 	size_type erase(const key_type& key)

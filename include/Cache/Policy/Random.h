@@ -13,15 +13,15 @@ namespace Policy
 		std::list<Key> key_storage;
 
 		template<typename Iterator, typename RandomGenerator>
-		Iterator select_randomly(Iterator start, Iterator end, RandomGenerator& g)
+		Iterator select_randomly(Iterator start, Iterator end, RandomGenerator& g) const
 		{
-			std::uniform_int_distribution<> distrib(0, std::distance(start, end) - 1);
+			std::uniform_int_distribution<> distrib(0, (int)std::distance(start, end) - 1);
 			std::advance(start, distrib(g));
 			return start;
 		}
 
 		template<typename Iterator>
-		Iterator select_randomly(Iterator start, Iterator end)
+		Iterator select_randomly(Iterator start, Iterator end) const
 		{
 			static std::random_device rd;
 			static std::mt19937 gen(rd());
@@ -33,7 +33,7 @@ namespace Policy
 		~Random() = default;
 
 		void clear() { key_storage.clear(); }
-		void insert(const Key& key) { key_storage.emplace(key); }
+		void insert(const Key& key) { key_storage.emplace_back(key); }
 		void touch (const Key& key) { (void)key; }
 		void erase (const Key& key) { key_storage.remove(key); }
 

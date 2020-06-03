@@ -1,14 +1,37 @@
 #include <string>
 
 #include "Cache/Cache.h"
+#include "Cache/Policy/FIFO.h"
+#include "Cache/Policy/LFU.h"
+#include "Cache/Policy/LIFO.h"
+#include "Cache/Policy/LRU.h"
+#include "Cache/Policy/MRU.h"
+#include "Cache/Policy/None.h"
+#include "Cache/Policy/Random.h"
 
 #define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 
-TEST_CASE("Cache w/ no replacement policy: Preconditions", "[cache][pre]")
+template<template<typename> class Template>
+struct wrapper
+{
+	template<typename Args>
+	using apply = Template<Args>;
+};
+
+#define CACHE_REPLACEMENT_POLICIES \
+	wrapper<Policy::FIFO>, \
+	wrapper<Policy::LFU >, \
+	wrapper<Policy::LIFO>, \
+	wrapper<Policy::LRU >, \
+	wrapper<Policy::MRU >, \
+	wrapper<Policy::None>, \
+	wrapper<Policy::Random>
+
+TEMPLATE_TEST_CASE("Cache API: Preconditions", "[cache][pre]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
 
 	SECTION("Original size is 0")
 	{
@@ -36,12 +59,12 @@ TEST_CASE("Cache w/ no replacement policy: Preconditions", "[cache][pre]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: Size", "[cache][size][clear][empty]")
+TEMPLATE_TEST_CASE("Cache API: insert()", "[cache][insert]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
 
-	SECTION("Size grows after each insertion")
+	SECTION("Size grows after each insert()")
 	{
 		REQUIRE(cache.size() == 0);
 
@@ -49,18 +72,6 @@ TEST_CASE("Cache w/ no replacement policy: Size", "[cache][size][clear][empty]")
 		{
 			cache.insert(std::to_string(i), (int)i);
 			CHECK(cache.size() == i);
-		}
-	}
-
-	SECTION("Cache is only empty() if size() == 0")
-	{
-		REQUIRE(cache.size() == 0);
-		REQUIRE(cache.empty() == true);
-
-		for(size_t i = 1; i <= MAX_SIZE; i++)
-		{
-			cache.insert(std::to_string(i), (int)i);
-			CHECK(cache.empty() == false);
 		}
 	}
 
@@ -81,6 +92,29 @@ TEST_CASE("Cache w/ no replacement policy: Size", "[cache][size][clear][empty]")
 			CHECK(cache.max_size() == MAX_SIZE);
 		}
 	}
+
+	SECTION("Cache evicts items if size() == max_size()")
+	{
+		REQUIRE(cache.size() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		REQUIRE(cache.size() == cache.max_size());
+		REQUIRE(cache.max_size() == MAX_SIZE);
+
+		for(size_t i = MAX_SIZE + 1; i <= 10 * MAX_SIZE; i++)
+		{
+			cache.insert(std::to_string(i), (int)i);
+			CHECK(cache.evicted_count() == i - MAX_SIZE);
+		}
+	}
+}
+
+TEMPLATE_TEST_CASE("Cache API: Size", "[cache][clear]", CACHE_REPLACEMENT_POLICIES)
+{
+	constexpr size_t MAX_SIZE = 128;
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
 
 	SECTION("clear() resets size to 0 (1/2)")
 	{
@@ -124,12 +158,12 @@ TEST_CASE("Cache w/ no replacement policy: Size", "[cache][size][clear][empty]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: Hits & misses", "[cache][stats][hit][miss]")
+TEMPLATE_TEST_CASE("Cache API: Hits & misses", "[cache][stats][hit][miss]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
 
-	SECTION("Every new insertion is not a miss nor a hit")
+	SECTION("Every insert() is not a miss nor a hit")
 	{
 		REQUIRE(cache.size() == 0);
 		REQUIRE(cache.hit_count () == 0);
@@ -138,6 +172,20 @@ TEST_CASE("Cache w/ no replacement policy: Hits & misses", "[cache][stats][hit][
 		for(size_t i = 1; i <= 10 * MAX_SIZE; i++)
 		{
 			cache.insert(std::to_string(i), (int)i);
+			CHECK(cache.hit_count () == 0);
+			CHECK(cache.miss_count() == 0);
+		}
+	}
+
+	SECTION("Every emplace() is not a miss nor a hit")
+	{
+		REQUIRE(cache.size() == 0);
+		REQUIRE(cache.hit_count () == 0);
+		REQUIRE(cache.miss_count() == 0);
+
+		for(size_t i = 1; i <= 10 * MAX_SIZE; i++)
+		{
+			cache.emplace(std::to_string(i), (int)i);
 			CHECK(cache.hit_count () == 0);
 			CHECK(cache.miss_count() == 0);
 		}
@@ -209,10 +257,73 @@ TEST_CASE("Cache w/ no replacement policy: Hits & misses", "[cache][stats][hit][
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: emplace()", "[cache][emplace]")
+TEMPLATE_TEST_CASE("Cache API: In-place construction", "[cache][emplace]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
+
+	class TestClass
+	{
+	public:
+		TestClass(char) { Constructions++; }
+		TestClass(const TestClass& other)
+		{
+			Constructions     += other.Constructions;
+			CopyConstructions += other.CopyConstructions + 1;
+			CopyAssignment    += other.CopyAssignment;
+			MoveConstruction  += other.MoveConstruction;
+			MoveAssignment    += other.MoveAssignment;
+		}
+
+		TestClass& operator=(const TestClass& other)
+		{
+			Constructions     += other.Constructions;
+			CopyConstructions += other.CopyConstructions;
+			CopyAssignment    += other.CopyAssignment + 1;
+			MoveConstruction  += other.MoveConstruction;
+			MoveAssignment    += other.MoveAssignment;
+
+			return *this;
+		}
+
+		TestClass(TestClass&& other)
+		{
+			Constructions     += other.Constructions;
+			CopyConstructions += other.CopyConstructions;
+			CopyAssignment    += other.CopyAssignment;
+			MoveConstruction  += other.MoveConstruction + 1;
+			MoveAssignment    += other.MoveAssignment;
+		}
+
+		TestClass& operator=(TestClass&& other)
+		{
+			Constructions     += other.Constructions;
+			CopyConstructions += other.CopyConstructions;
+			CopyAssignment    += other.CopyAssignment;
+			MoveConstruction  += other.MoveConstruction;
+			MoveAssignment    += other.MoveAssignment + 1;
+
+			return *this;
+		}
+
+		int Constructions{};
+		int CopyConstructions{};
+		int CopyAssignment{};
+		int MoveConstruction{};
+		int MoveAssignment{};
+	};
+
+	SECTION("emplace() constructs item in-place")
+	{
+		Cache<std::string, TestClass, TestType::template apply> emplace_cache(10);
+		emplace_cache.emplace("key", 'v');
+
+		CHECK(emplace_cache.at("key").Constructions     == 1);
+		CHECK(emplace_cache.at("key").CopyConstructions == 0);
+		CHECK(emplace_cache.at("key").CopyAssignment    == 0);
+		CHECK(emplace_cache.at("key").MoveConstruction  == 0);
+		CHECK(emplace_cache.at("key").MoveAssignment    == 0);
+	}
 
 	SECTION("Size grows after each emplace()")
 	{
@@ -220,30 +331,67 @@ TEST_CASE("Cache w/ no replacement policy: emplace()", "[cache][emplace]")
 
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 		{
-			cache.insert(std::to_string(i), (int)i);
+			cache.emplace(std::to_string(i), (int)i);
 			CHECK(cache.size() == i);
 		}
 	}
 
-	SECTION("Every emplace() is not a miss nor a hit")
+	SECTION("Size stops growing after size() == max_size()")
 	{
 		REQUIRE(cache.size() == 0);
-		REQUIRE(cache.hit_count () == 0);
-		REQUIRE(cache.miss_count() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.emplace(std::to_string(i), (int)i);
+
+		REQUIRE(cache.size() == MAX_SIZE);
+		REQUIRE(cache.max_size() == MAX_SIZE);
 
 		for(size_t i = 1; i <= 10 * MAX_SIZE; i++)
 		{
 			cache.emplace(std::to_string(i), (int)i);
-			CHECK(cache.hit_count () == 0);
-			CHECK(cache.miss_count() == 0);
+			CHECK(cache.size() == MAX_SIZE);
+			CHECK(cache.max_size() == MAX_SIZE);
 		}
+	}
+
+	SECTION("Cache evicts items if size() == max_size()")
+	{
+		REQUIRE(cache.size() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.emplace(std::to_string(i), (int)i);
+
+		REQUIRE(cache.size() == MAX_SIZE);
+		REQUIRE(cache.max_size() == MAX_SIZE);
+
+		for(size_t i = MAX_SIZE + 1; i <= 10 * MAX_SIZE; i++)
+		{
+			cache.emplace(std::to_string(i), (int)i);
+			CHECK(cache.evicted_count() == i - MAX_SIZE);
+		}
+	}
+
+	SECTION("emplace() of an existing item does not change the size")
+	{
+		REQUIRE(cache.size() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.emplace(std::to_string(i), (int)i);
+
+		REQUIRE(cache.size() == MAX_SIZE);
+		REQUIRE(cache.max_size() == MAX_SIZE);
+
+		cache.emplace("1", 5);
+
+		CHECK(cache.size() == MAX_SIZE);
+		CHECK(cache.max_size() == MAX_SIZE);
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: find()", "[cache][find]")
+TEMPLATE_TEST_CASE("Cache API: find()", "[cache][find]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
 
 	SECTION("find() for an existing item returns != end()")
 	{
@@ -296,10 +444,10 @@ TEST_CASE("Cache w/ no replacement policy: find()", "[cache][find]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: contains()", "[cache][contains]")
+TEMPLATE_TEST_CASE("Cache API: contains()", "[cache][contains]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
 
 	SECTION("contains() for an existing item returns true")
 	{
@@ -326,10 +474,40 @@ TEST_CASE("Cache w/ no replacement policy: contains()", "[cache][contains]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: flush()", "[cache][flush]")
+TEMPLATE_TEST_CASE("Cache API: count()", "[cache][count]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
+
+	SECTION("count() for an existing item returns 1")
+	{
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+		{
+			size_t count = cache.count(std::to_string(i));
+			CHECK(count == 1);
+		}
+	}
+
+	SECTION("count() for a non-existing item returns 0")
+	{
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		for(size_t i = MAX_SIZE + 1; i <= 2 * MAX_SIZE; i++)
+		{
+			size_t count = cache.count(std::to_string(i));
+			CHECK(count == 0);
+		}
+	}
+}
+
+TEMPLATE_TEST_CASE("Cache API: flush()", "[cache][flush]", CACHE_REPLACEMENT_POLICIES)
+{
+	constexpr size_t MAX_SIZE = 128;
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
 
 	SECTION("flush() resets size to 0")
 	{
@@ -440,10 +618,10 @@ TEST_CASE("Cache w/ no replacement policy: flush()", "[cache][flush]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: erase()", "[cache][erase]")
+TEMPLATE_TEST_CASE("Cache API: erase()", "[cache][erase]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
 
 	SECTION("erase(key) reduces size by 1")
 	{
@@ -460,7 +638,7 @@ TEST_CASE("Cache w/ no replacement policy: erase()", "[cache][erase]")
 		CHECK(cache.size() == old_size - 1);
 	}
 
-	SECTION("Erased key is not cached")
+	SECTION("Erased key is not cached (1/2)")
 	{
 		REQUIRE(cache.size() == 0);
 
@@ -472,6 +650,24 @@ TEST_CASE("Cache w/ no replacement policy: erase()", "[cache][erase]")
 		REQUIRE(cache.miss_count() == miss_count);
 		std::string key = std::to_string(((size_t)rand() % MAX_SIZE) + 1);
 		cache.erase(key);
+		bool contains = cache.contains(key);
+		CHECK(contains == false);
+		CHECK(cache.miss_count() == miss_count + 1);
+	}
+
+	SECTION("Erased key is not cached (2/2)")
+	{
+		REQUIRE(cache.size() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		size_t miss_count = cache.miss_count();
+
+		REQUIRE(cache.miss_count() == miss_count);
+		std::string key = std::to_string(((size_t)rand() % MAX_SIZE) + 1);
+		auto it = cache.find(key);
+		cache.erase(it);
 		bool contains = cache.contains(key);
 		CHECK(contains == false);
 		CHECK(cache.miss_count() == miss_count + 1);
@@ -510,12 +706,46 @@ TEST_CASE("Cache w/ no replacement policy: erase()", "[cache][erase]")
 		cache.erase("asdf");
 		CHECK(cache.miss_count() == miss + 1);
 	}
+
+	SECTION("erase() of an existing key is a hit")
+	{
+		REQUIRE(cache.hit_count() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		size_t hit = cache.hit_count();
+
+		REQUIRE(cache.hit_count() == hit);
+		cache.erase("1");
+		CHECK(cache.hit_count() == hit + 1);
+	}
+
+	SECTION("erase(begin(), end()) clears the cache")
+	{
+		REQUIRE(cache.hit_count() == 0);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		cache.erase(cache.begin(), cache.end());
+
+		CHECK(cache.max_size() == MAX_SIZE);
+		CHECK(cache.size() == 0);
+
+		size_t item_count = 0;
+
+		for(auto it = cache.begin(); it != cache.end(); it++)
+			item_count++;
+
+		CHECK(item_count == 0);
+	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: at()", "[cache][at]")
+TEMPLATE_TEST_CASE("Cache API: at()", "[cache][at]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
 
 	SECTION("at() return value for existing keys")
 	{
@@ -539,10 +769,37 @@ TEST_CASE("Cache w/ no replacement policy: at()", "[cache][at]")
 	}
 }
 
-TEST_CASE("Cache w/ no replacement policy: operator[]", "[cache][operator]")
+TEMPLATE_TEST_CASE("Cache API: lookup()", "[cache][lookup]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
+
+	SECTION("lookup() return value for existing keys")
+	{
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+		{
+			auto item = cache.lookup(std::to_string(i));
+			CHECK(item == (int)i);
+		}
+	}
+
+	SECTION("lookup() throws for non-exisiting keys")
+	{
+		for(size_t i = 1; i <= MAX_SIZE; i++)
+			cache.insert(std::to_string(i), (int)i);
+
+		for(size_t i = MAX_SIZE + 1; i <= 2 * MAX_SIZE; i++)
+			CHECK_THROWS(cache.lookup(std::to_string(i)));
+	}
+}
+
+TEMPLATE_TEST_CASE("Cache API: operator[]", "[cache][operator]", CACHE_REPLACEMENT_POLICIES)
+{
+	constexpr size_t MAX_SIZE = 128;
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
 
 	SECTION("operator[] inserts items if the key is not present")
 	{
@@ -618,41 +875,5 @@ TEST_CASE("Cache w/ no replacement policy: operator[]", "[cache][operator]")
 
 		CHECK(cache.size() == MAX_SIZE);
 		CHECK(cache.max_size() == MAX_SIZE);
-	}
-}
-
-TEST_CASE("Cache w/ no replacement policy: default behaviour", "[cache][behaviour]")
-{
-	constexpr size_t MAX_SIZE = 128;
-	Cache<std::string, int> cache(MAX_SIZE);
-
-	SECTION("Replaced item is the first lexicographically (1/2)")
-	{
-		for(size_t i = 1; i <= MAX_SIZE; i++)
-			cache.insert(std::to_string(i), (int)i);
-
-		REQUIRE(cache.size() == cache.max_size());
-		REQUIRE(cache.evicted_count() == 0);
-
-		cache.insert("asdf", 42);
-		CHECK(cache.contains("1") == false);
-		CHECK(cache.evicted_count() == 1);
-	}
-
-	SECTION("Replaced item is the first lexicographically (1/2)")
-	{
-		for(size_t i = 1; i <= MAX_SIZE; i++)
-			cache.insert(std::to_string(i), (int)i);
-
-		REQUIRE(cache.size() == cache.max_size());
-		REQUIRE(cache.evicted_count() == 0);
-
-		cache.insert("0", 69);
-		CHECK(cache.contains("0") == true);
-		CHECK(cache.contains("1") == false);
-		CHECK(cache.evicted_count() == 1);
-		cache.insert("asdf", 42);
-		CHECK(cache.contains("0") == false);
-		CHECK(cache.evicted_count() == 2);
 	}
 }
