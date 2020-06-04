@@ -29,6 +29,9 @@ public:
 	// operator[], insert(), lookup()) nor clear()/flush() functions.
 	// The arameters given to this function are key and value of the hit. In this
 	// example, we will only register hits & misses of key == "test"
+	// Note that this is not a good implementation, since it will only work if the
+	// type Key is a std::string or std::string-like, but it will work for
+	// illustration purposes :D
 	void hit(const Key& k, const Value&) noexcept { if(k == "test") m_Hits++; }
 
 	// This function gets called when the cache registers a miss. Again, it is

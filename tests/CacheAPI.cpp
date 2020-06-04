@@ -28,7 +28,7 @@ struct wrapper
 	wrapper<Policy::None>, \
 	wrapper<Policy::Random>
 
-TEMPLATE_TEST_CASE("Cache API: Preconditions", "[cache][pre]", CACHE_REPLACEMENT_POLICIES)
+TEMPLATE_TEST_CASE("Cache API: Initial conditionns", "[cache][init]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
@@ -587,6 +587,8 @@ TEMPLATE_TEST_CASE("Cache API: flush()", "[cache][flush]", CACHE_REPLACEMENT_POL
 	{
 		REQUIRE(cache.size() == 0);
 		REQUIRE(cache.evicted_count() == 0);
+		REQUIRE(cache.hit_count() == 0);
+		REQUIRE(cache.miss_count() == 0);
 
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
@@ -595,12 +597,16 @@ TEMPLATE_TEST_CASE("Cache API: flush()", "[cache][flush]", CACHE_REPLACEMENT_POL
 
 		REQUIRE(cache.size() == size);
 		REQUIRE(cache.evicted_count() == 0);
+		REQUIRE(cache.hit_count() == 0);
+		REQUIRE(cache.miss_count() == 0);
 
 		for(size_t i = MAX_SIZE + 1; i <= 10 * MAX_SIZE; i++)
 			cache.flush(std::to_string(i));
 
 		CHECK(cache.size() == size);
 		CHECK(cache.evicted_count() == 0);
+		REQUIRE(cache.hit_count() == 0);
+		REQUIRE(cache.miss_count() == 10 * MAX_SIZE - MAX_SIZE);
 	}
 
 	SECTION("flush() of a non-existing key is a miss")
@@ -723,8 +729,6 @@ TEMPLATE_TEST_CASE("Cache API: erase()", "[cache][erase]", CACHE_REPLACEMENT_POL
 
 	SECTION("erase(begin(), end()) clears the cache")
 	{
-		REQUIRE(cache.hit_count() == 0);
-
 		for(size_t i = 1; i <= MAX_SIZE; i++)
 			cache.insert(std::to_string(i), (int)i);
 
