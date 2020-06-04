@@ -4,7 +4,7 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "Policy/None.h"
+#include "Policy/Random.h"
 #include "Stats/Basic.h"
 #include "detail/utility.h"
 
@@ -18,7 +18,7 @@ struct NullLock
 template<
 	typename Key,                                            // Key type
 	typename Value,                                          // Value type
-	template<typename> class CachePolicy = Policy::None,     // Cache policy
+	template<typename> class CachePolicy = Policy::Random,   // Cache policy
 	typename Lock = NullLock,                                // Lock type (for multithreading)
 	template<typename...> class StatsProvider = Stats::Basic // Statistics measurement object
 >
@@ -243,3 +243,28 @@ private:
 			(m_Stats.miss(key), it));
 	}
 };
+
+namespace std
+{
+	template<
+		typename Key,
+		typename Value,
+		template<typename> class Policy,
+		typename Lock,
+		template<typename...> class Stats,
+		typename Pred
+	>
+	typename Cache<Key, Value, Policy, Lock, Stats>::size_type erase_if(Cache<Key, Value, Policy, Lock, Stats>& c, Pred pred)
+	{
+		auto old_size = c.size();
+		for(auto i = c.begin(), last = c.end(); i != last;)
+		{
+			if(pred(*i))
+				i = c.erase(i);
+			else
+				++i;
+		}
+
+		return old_size - c.size();
+	}
+}

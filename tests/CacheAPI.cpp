@@ -6,7 +6,6 @@
 #include "Cache/Policy/LIFO.h"
 #include "Cache/Policy/LRU.h"
 #include "Cache/Policy/MRU.h"
-#include "Cache/Policy/None.h"
 #include "Cache/Policy/Random.h"
 
 #define CATCH_CONFIG_MAIN
@@ -25,7 +24,6 @@ struct wrapper
 	wrapper<Policy::LIFO>, \
 	wrapper<Policy::LRU >, \
 	wrapper<Policy::MRU >, \
-	wrapper<Policy::None>, \
 	wrapper<Policy::Random>
 
 TEMPLATE_TEST_CASE("Cache API: Initial conditionns", "[cache][init]", CACHE_REPLACEMENT_POLICIES)

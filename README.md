@@ -237,8 +237,7 @@ This library provides the following policies, although you could make your own a
 - `Policy::LIFO`: (defined inside [`Cache/Policy/LIFO.h`]). Works like a stack: the last element in is the  first element out.
 - `Policy::LRU`: (defined inside [`Cache/Policy/LRU.h`]). Replaces the Least Recently Used entry.
 - `Policy::MRU`: (defined inside [`Cache/Policy/MRU.h`]). Replaces the Most Recently Used entry.
-- `Policy::None`: (defined inside [`Cache/Policy/None.h`]). Replaces the smallest key (lexicographically).
-- `Policy::Random`: (defined inside [`Cache/Policy/Random.h`]). Replaces a random key.
+- `Policy::Random`: (defined inside [`Cache/Policy/Random.h`]). Replaces a random key. This is the default if you don't specify otherwise.
 
 Depending on your application, you might choose different algorithms for your caches. For example, if your data is more likely
 to be accessed the older it is, you might want to use the MRU replacement algorithm. In contrast, if your data is more likely
@@ -288,7 +287,6 @@ This library is licensed under the [MIT License](https://choosealicense.com/lice
 [`Cache/Policy/LIFO.h`]: https://github.com/marcizhu/Cache/blob/master/include/Cache/Policy/LIFO.h
 [`Cache/Policy/LRU.h`]: https://github.com/marcizhu/Cache/blob/master/include/Cache/Policy/LRU.h
 [`Cache/Policy/MRU.h`]: https://github.com/marcizhu/Cache/blob/master/include/Cache/Policy/MRU.h
-[`Cache/Policy/None.h`]: https://github.com/marcizhu/Cache/blob/master/include/Cache/Policy/None.h
 [`Cache/Policy/Random.h`]: https://github.com/marcizhu/Cache/blob/master/include/Cache/Policy/Random.h
 
 [examples/]: https://github.com/marcizhu/Cache/blob/master/examples/
