@@ -109,7 +109,7 @@ TEMPLATE_TEST_CASE("Cache API: insert()", "[cache][insert]", CACHE_REPLACEMENT_P
 	}
 }
 
-TEMPLATE_TEST_CASE("Cache API: Size", "[cache][clear]", CACHE_REPLACEMENT_POLICIES)
+TEMPLATE_TEST_CASE("Cache API: clear()", "[cache][clear]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
@@ -255,7 +255,7 @@ TEMPLATE_TEST_CASE("Cache API: Hits & misses", "[cache][stats][hit][miss]", CACH
 	}
 }
 
-TEMPLATE_TEST_CASE("Cache API: In-place construction", "[cache][emplace]", CACHE_REPLACEMENT_POLICIES)
+TEMPLATE_TEST_CASE("Cache API: emplace()", "[cache][emplace]", CACHE_REPLACEMENT_POLICIES)
 {
 	constexpr size_t MAX_SIZE = 128;
 	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
@@ -834,7 +834,7 @@ TEMPLATE_TEST_CASE("Cache API: operator[]", "[cache][operator]", CACHE_REPLACEME
 		CHECK(cache.max_size() == MAX_SIZE);
 	}
 
-	SECTION("operator[] returns the value if the key contains (1/3)")
+	SECTION("operator[] returns the value if the key exists (1/3)")
 	{
 		REQUIRE(cache.size() == 0);
 		REQUIRE(cache.max_size() == MAX_SIZE);
@@ -849,7 +849,7 @@ TEMPLATE_TEST_CASE("Cache API: operator[]", "[cache][operator]", CACHE_REPLACEME
 			CHECK(cache[std::to_string(i)] == (int)i);
 	}
 
-	SECTION("operator[] returns the value if the key contains (2/3)")
+	SECTION("operator[] returns the value if the key exists (2/3)")
 	{
 		REQUIRE(cache.size() == 0);
 		REQUIRE(cache.max_size() == MAX_SIZE);
@@ -864,7 +864,7 @@ TEMPLATE_TEST_CASE("Cache API: operator[]", "[cache][operator]", CACHE_REPLACEME
 			CHECK(cache[std::to_string(it->second)] == (int)it->second);
 	}
 
-	SECTION("operator[] returns the value if the key contains (3/3)")
+	SECTION("operator[] returns the value if the key exists (3/3)")
 	{
 		REQUIRE(cache.size() == 0);
 		REQUIRE(cache.max_size() == MAX_SIZE);
