@@ -1,6 +1,6 @@
 language: cpp
 os: linux
-dist: bionic
+dist: xenial
 
 jobs:
   include:
@@ -9,26 +9,31 @@ jobs:
         apt:
           packages: lcov
       compiler: clang
-      env: COVERAGE=ON
+      env:
+        - COVERAGE=ON
+        - CONFIG=Debug
 
     - os: linux
       addons:
         apt:
           packages: lcov
       compiler: gcc
-      env: COVERAGE=ON
+      env:
+        - COVERAGE=ON
+        - CONFIG=Debug
 
     - os: osx
-      env: COVERAGE=ON
+      env:
+        - COVERAGE=ON
+        - CONFIG=Debug
       install:
         # Install dependencies for macOS
         - if [ "$TRAVIS_OS_NAME" = "osx" ] && [[ "$COVERAGE" == "ON" ]]; then HOMEBREW_NO_AUTO_UPDATE=1 brew install lcov ; fi
 
     - os: windows
-      env: COVERAGE=OFF
-      after_success:
-        # Run unit tests
-        - ctest -V -C Release
+      env:
+        - COVERAGE=OFF
+        - CONFIG=Release
 
 script:
   # Create build folder
@@ -36,13 +41,13 @@ script:
   # Configure
   - cmake -DCODE_COVERAGE=$COVERAGE -DCACHE_BUILD_TESTS=ON -DCACHE_BUILD_EXAMPLES=ON ..
   # Build & test
-  - if [ "$TRAVIS_OS_NAME" = "osx"     ]; then cmake --build . --config Debug -- -j4 ; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux"   ]; then cmake --build . --config Debug -- -j $(nproc) ; fi
-  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then cmake --build . --config Release ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx"     ]; then cmake --build . --config $CONFIG -- -j4 ; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux"   ]; then cmake --build . --config $CONFIG -- -j $(nproc) ; fi
+  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then cmake --build . --config $CONFIG ; fi
+  # Run unit tests
+  - ctest -V -C $CONFIG
 
 after_success:
-  # Run unit tests
-  - ctest -V
   # Create lcov report
   # capture coverage info
   - lcov --directory . --capture --output-file coverage.info
