@@ -1,3 +1,4 @@
+#include <functional>
 #include <string>
 
 #include "Cache/Cache.h"
@@ -25,6 +26,78 @@ struct wrapper
 	wrapper<Policy::LRU >, \
 	wrapper<Policy::MRU >, \
 	wrapper<Policy::Random>
+
+TEMPLATE_TEST_CASE("Cache API: Thread-safety", "[cache][thread]", CACHE_REPLACEMENT_POLICIES)
+{
+	struct TestLock
+	{
+		std::function<void()> lock_fn;
+		std::function<void()> unlock_fn;
+		std::function<bool()> try_lock_fn;
+
+		void lock() { lock_fn(); }
+		bool try_lock() { return try_lock_fn(); }
+		void unlock() { unlock_fn(); }
+	};
+
+	int locks = 0;
+	int unlocks = 0;
+
+	TestLock test_lock;
+	test_lock.lock_fn     = [&]() { if(locks >  unlocks) throw std::runtime_error("Deadlock!"); locks++; };
+	test_lock.try_lock_fn = [&]() { if(locks == unlocks) return locks++, true; else return false; };
+	test_lock.unlock_fn   = [&]() { unlocks++; };
+
+	constexpr size_t MAX_SIZE = 128;
+	Cache<std::string, int, TestType::template apply, TestLock> cache(MAX_SIZE, test_lock);
+
+#define CHECK_THREAD_SAFETY_EX(fn, n1, n2) \
+	CHECK(locks == n1);   \
+	CHECK(unlocks == n1); \
+	fn;                   \
+	CHECK(locks == n2);   \
+	CHECK(unlocks == n2);
+
+#define CHECK_THREAD_SAFETY(fn) CHECK_THREAD_SAFETY_EX(fn, 1, 2)
+
+	SECTION("Constructor is thread-safe")
+	{
+		CHECK(locks == 1);
+		CHECK(unlocks == 1);
+	}
+
+	// Iterators
+	SECTION("begin() is thread-safe")  { CHECK_THREAD_SAFETY(cache.begin ()); }
+	SECTION("cbegin() is thread-safe") { CHECK_THREAD_SAFETY(cache.cbegin()); }
+	SECTION("end() is thread-safe")    { CHECK_THREAD_SAFETY(cache.end ()  ); }
+	SECTION("cend() is thread-safe")   { CHECK_THREAD_SAFETY(cache.cend()  ); }
+
+	// Size getters
+	SECTION("empty() is thread-safe") { CHECK_THREAD_SAFETY(cache.empty()); }
+	SECTION("size() is thread-safe")  { CHECK_THREAD_SAFETY(cache.size() ); }
+
+	// Lookup functions
+	SECTION("at() is thread-safe")       { cache["key"] = 0; CHECK_THREAD_SAFETY_EX(cache.at    ("key"), 2, 3); }
+	SECTION("lookup() is thread-safe")   { cache["key"] = 0; CHECK_THREAD_SAFETY_EX(cache.lookup("key"), 2, 3); }
+	SECTION("operator[] is thread-safe") { CHECK_THREAD_SAFETY(cache["key"]); }
+	SECTION("contains() is thread-safe") { CHECK_THREAD_SAFETY(cache.contains("key")); }
+	SECTION("count() is thread-safe")    { CHECK_THREAD_SAFETY(cache.count("key")); }
+	SECTION("find() is thread-safe")     { CHECK_THREAD_SAFETY(cache.find("key")); }
+
+	// Erase functions
+	SECTION("erase(it) is thread-safe")    { cache["key"] = 0; CHECK_THREAD_SAFETY_EX(cache.erase(cache.begin()             ), 2, 4); }
+	SECTION("erase(range) is thread-safe") { cache["key"] = 0; CHECK_THREAD_SAFETY_EX(cache.erase(cache.begin(), cache.end()), 2, 5); }
+	SECTION("erase(key) is thread-safe")   { cache["key"] = 0; CHECK_THREAD_SAFETY_EX(cache.erase("key"                     ), 2, 3); }
+
+	// Insertion functions
+	SECTION("emplace() is thread-safe")     { CHECK_THREAD_SAFETY(cache.emplace("test", 5)); }
+	SECTION("insert() is thread-safe")      { CHECK_THREAD_SAFETY(cache.insert ("test", 5)); }
+	SECTION("insert(range) is thread-safe") { CHECK_THREAD_SAFETY_EX(cache.insert({ { "a", 1 }, { "b", 2}, { "c", 3 } }), 1, 1+3); }
+
+	// Clear functions
+	SECTION("clear() is thread-safe") { CHECK_THREAD_SAFETY(cache.clear()); }
+	SECTION("flush() is thread-safe") { CHECK_THREAD_SAFETY(cache.flush()); }
+}
 
 TEMPLATE_TEST_CASE("Cache API: Initial conditionns", "[cache][init]", CACHE_REPLACEMENT_POLICIES)
 {

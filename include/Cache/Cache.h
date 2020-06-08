@@ -109,6 +109,7 @@ public:
 
 	iterator erase(const_iterator first, const_iterator last)
 	{
+		std::lock_guard<Lock> lock(m_Lock);
 		for(auto it = first; it != last; ++it)
 		{
 			m_CachePolicy.erase(it->first);

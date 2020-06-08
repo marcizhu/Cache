@@ -23,7 +23,7 @@ namespace Policy
 		void insert(const Key& key)
 		{
 			constexpr size_t INITIAL_VALUE = 1;
-			lfu_storage[key] = frequency_storage.emplace_hint(frequency_storage.cbegin(), INITIAL_VALUE, key);
+			lfu_storage[key] = frequency_storage.emplace_hint(frequency_storage.begin(), INITIAL_VALUE, key);
 		}
 
 		void touch(const Key& key)
@@ -32,7 +32,7 @@ namespace Policy
 			auto updated_elem = std::make_pair(elem_for_update->first + 1, elem_for_update->second);
 
 			frequency_storage.erase(elem_for_update);
-			lfu_storage[key] = frequency_storage.emplace_hint(frequency_storage.cend(), std::move(updated_elem));
+			lfu_storage[key] = frequency_storage.emplace_hint(frequency_storage.end(), std::move(updated_elem));
 		}
 
 		void erase(const Key& key)
