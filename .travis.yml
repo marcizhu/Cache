@@ -8,9 +8,14 @@ jobs:
       addons:
         apt:
           packages: lcov
-      compiler:
-        - clang
-        - gcc
+      compiler: clang
+      env: CONFIG=Debug
+
+    - os: linux
+      addons:
+        apt:
+          packages: lcov
+      compiler: gcc
       env: CONFIG=Debug
 
     - os: osx
