@@ -8,38 +8,25 @@ jobs:
       addons:
         apt:
           packages: lcov
-      compiler: clang
-      env:
-        - COVERAGE=ON
-        - CONFIG=Debug
-
-    - os: linux
-      addons:
-        apt:
-          packages: lcov
-      compiler: gcc
-      env:
-        - COVERAGE=ON
-        - CONFIG=Debug
+      compiler:
+        - clang
+        - gcc
+      env: CONFIG=Debug
 
     - os: osx
-      env:
-        - COVERAGE=ON
-        - CONFIG=Debug
+      env: CONFIG=Debug
       install:
         # Install dependencies for macOS
-        - if [ "$TRAVIS_OS_NAME" = "osx" ] && [[ "$COVERAGE" == "ON" ]]; then HOMEBREW_NO_AUTO_UPDATE=1 brew install lcov ; fi
+        - if [ "$TRAVIS_OS_NAME" = "osx" ]; then HOMEBREW_NO_AUTO_UPDATE=1 brew install lcov ; fi
 
     - os: windows
-      env:
-        - COVERAGE=OFF
-        - CONFIG=Release
+      env: CONFIG=Release
 
 script:
   # Create build folder
   - mkdir build && cd build
   # Configure
-  - cmake -DCODE_COVERAGE=$COVERAGE -DCACHE_BUILD_TESTS=ON -DCACHE_BUILD_EXAMPLES=ON ..
+  - cmake -DCODE_COVERAGE=ON -DCACHE_BUILD_TESTS=ON -DCACHE_BUILD_EXAMPLES=ON ..
   # Build & test
   - if [ "$TRAVIS_OS_NAME" = "osx"     ]; then cmake --build . --config $CONFIG -- -j4 ; fi
   - if [ "$TRAVIS_OS_NAME" = "linux"   ]; then cmake --build . --config $CONFIG -- -j $(nproc) ; fi
