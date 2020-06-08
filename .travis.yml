@@ -62,6 +62,9 @@ jobs:
 
     - os: windows
       env: COVERAGE=OFF
+      after_success:
+        # Run unit tests
+        - ctest -V
 
 script:
   # Create build folder
