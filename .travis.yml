@@ -10,18 +10,6 @@ jobs:
           packages: lcov
       compiler: clang
       env: COVERAGE=ON
-      after_success:
-        # Run unit tests
-        - ctest -V
-        # Create lcov report
-        # capture coverage info
-        - lcov --directory . --capture --output-file coverage.info
-        # filter out system and extra files.
-        - lcov --remove coverage.info '/usr/*' '*/deps/*' --output-file coverage.info
-        # output coverage data for debugging
-        - lcov --list coverage.info
-        # Uploading to CodeCov
-        - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
 
     - os: linux
       addons:
@@ -29,42 +17,18 @@ jobs:
           packages: lcov
       compiler: gcc
       env: COVERAGE=ON
-      after_success:
-        # Run unit tests
-        - ctest -V
-        # Create lcov report
-        # capture coverage info
-        - lcov --directory . --capture --output-file coverage.info
-        # filter out system and extra files.
-        - lcov --remove coverage.info '/usr/*' '*/deps/*' --output-file coverage.info
-        # output coverage data for debugging
-        - lcov --list coverage.info
-        # Uploading to CodeCov
-        - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
 
     - os: osx
       env: COVERAGE=ON
       install:
         # Install dependencies for macOS
         - if [ "$TRAVIS_OS_NAME" = "osx" ] && [[ "$COVERAGE" == "ON" ]]; then HOMEBREW_NO_AUTO_UPDATE=1 brew install lcov ; fi
-      after_success:
-        # Run unit tests
-        - ctest -V
-        # Create lcov report
-        # capture coverage info
-        - lcov --directory . --capture --output-file coverage.info
-        # filter out system and extra files.
-        - lcov --remove coverage.info '/usr/*' '*/deps/*' --output-file coverage.info
-        # output coverage data for debugging
-        - lcov --list coverage.info
-        # Uploading to CodeCov
-        - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
 
     - os: windows
       env: COVERAGE=OFF
       after_success:
         # Run unit tests
-        - ctest -V
+        - ctest -V -C Debug
 
 script:
   # Create build folder
@@ -75,6 +39,19 @@ script:
   - if [ "$TRAVIS_OS_NAME" = "osx"     ]; then cmake --build . --config Debug -- -j4 ; fi
   - if [ "$TRAVIS_OS_NAME" = "linux"   ]; then cmake --build . --config Debug -- -j $(nproc) ; fi
   - if [ "$TRAVIS_OS_NAME" = "windows" ]; then cmake --build . --config Debug ; fi
+
+after_success:
+  # Run unit tests
+  - ctest -V
+  # Create lcov report
+  # capture coverage info
+  - lcov --directory . --capture --output-file coverage.info
+  # filter out system and extra files.
+  - lcov --remove coverage.info '/usr/*' '*/deps/*' --output-file coverage.info
+  # output coverage data for debugging
+  - lcov --list coverage.info
+  # Uploading to CodeCov
+  - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
 
 notifications:
   email:
