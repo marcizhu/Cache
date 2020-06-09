@@ -27,6 +27,47 @@ struct wrapper
 	wrapper<Policy::MRU >, \
 	wrapper<Policy::Random>
 
+TEMPLATE_TEST_CASE("Cache API: std::erase_if()", "[cache][erase_if]", CACHE_REPLACEMENT_POLICIES)
+{
+	constexpr size_t MAX_SIZE = 128;
+	Cache<std::string, int, TestType::template apply> cache(MAX_SIZE);
+
+	cache["key 1"] = 4;
+	cache["key 2"] = 5;
+
+	using value_type = typename Cache<std::string, int, TestType::template apply>::value_type;
+
+	SECTION("std::erase_if() deletes items if predicate is true (1/3)")
+	{
+		std::erase_if(cache, [](const value_type& p) { return p.second == 4; });
+		CHECK(cache.size() == 1);
+	}
+
+	SECTION("std::erase_if() deletes items if predicate is true (2/3)")
+	{
+		std::erase_if(cache, [](const value_type& p) { return p.first == "key 1"; });
+		CHECK(cache.size() == 1);
+	}
+
+	SECTION("std::erase_if() deletes items if predicate is true (3/3)")
+	{
+		std::erase_if(cache, [](const value_type&) { return true; });
+		CHECK(cache.size() == 0);
+	}
+
+	SECTION("std::erase_if() does NOT erase items if predicate is false (1/2)")
+	{
+		std::erase_if(cache, [](const value_type& p) { return p.second == 7; });
+		CHECK(cache.size() == 2);
+	}
+
+	SECTION("std::erase_if() does NOT erase items if predicate is false (2/2)")
+	{
+		std::erase_if(cache, [](const value_type&) { return false; });
+		CHECK(cache.size() == 2);
+	}
+}
+
 TEMPLATE_TEST_CASE("Cache API: Thread-safety", "[cache][thread]", CACHE_REPLACEMENT_POLICIES)
 {
 	struct TestLock
@@ -93,6 +134,7 @@ TEMPLATE_TEST_CASE("Cache API: Thread-safety", "[cache][thread]", CACHE_REPLACEM
 	SECTION("emplace() is thread-safe")     { CHECK_THREAD_SAFETY(cache.emplace("test", 5)); }
 	SECTION("insert() is thread-safe")      { CHECK_THREAD_SAFETY(cache.insert ("test", 5)); }
 	SECTION("insert(range) is thread-safe") { CHECK_THREAD_SAFETY_EX(cache.insert({ { "a", 1 }, { "b", 2}, { "c", 3 } }), 1, 1+3); }
+	SECTION("insert(pair) is thread-safe")  { CHECK_THREAD_SAFETY(cache.insert(std::make_pair("key", 9))); }
 
 	// Clear functions
 	SECTION("clear() is thread-safe") { CHECK_THREAD_SAFETY(cache.clear()); }
