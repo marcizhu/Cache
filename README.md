@@ -113,12 +113,12 @@ std::uint64_t cached_fibonacci(std::uint64_t n)
 
 int main()
 {
-	std::cout << "cached_fibonacci( 0) = " << cached_fibonacci( 0) << std::endl; // should be 0
-	std::cout << "cached_fibonacci( 2) = " << cached_fibonacci( 2) << std::endl; // should be 1
-	std::cout << "cached_fibonacci(40) = " << cached_fibonacci(40) << std::endl; // should be 102334155
-	std::cout << "cached_fibonacci(45) = " << cached_fibonacci(45) << std::endl; // should be 1134903170
-	std::cout << "cached_fibonacci(50) = " << cached_fibonacci(50) << std::endl; // should be 12586269025
-	std::cout << "cached_fibonacci(90) = " << cached_fibonacci(90) << std::endl; // should be 2880067194370816120
+	std::cout << "fib( 0) = " << cached_fibonacci( 0) << std::endl; // prints 0
+	std::cout << "fib( 2) = " << cached_fibonacci( 2) << std::endl; // prints 1
+	std::cout << "fib(40) = " << cached_fibonacci(40) << std::endl; // prints 102334155
+	std::cout << "fib(45) = " << cached_fibonacci(45) << std::endl; // prints 1134903170
+	std::cout << "fib(50) = " << cached_fibonacci(50) << std::endl; // prints 12586269025
+	std::cout << "fib(90) = " << cached_fibonacci(90) << std::endl; // prints 2880067194370816120
 }
 ```
 For more information and an in-depth explanation on how it works, please see [examples/dynamic_programming.cpp]
@@ -135,7 +135,7 @@ to the constructor and the size will be unlimited), but it also has some useful 
 ### Thread-safe cache
 Caches are **NOT** thread-safe by default. This is done to prevent the continuous atomic locking and unlocking of mutex 
 objects in single-threaded scenarios, which would reduce performance. If you need to use a thread safe cache, just pass 
-`std::mutex` (or any other mutex-like type) as the third template parameter of the `Cache` class:
+`std::mutex` (or any other mutex-like type) as the fourth template parameter of the `Cache` class:
 
 ```cpp
 #include "Cache/Cache.h"
@@ -144,8 +144,8 @@ objects in single-threaded scenarios, which would reduce performance. If you nee
 Cache<std::string, int, Policy::LRU, std::mutex> cache(100);
 ```
 
-As stated earlier, by default the cache is not thread-safe. That is because the third template parameter defaults to 
-`NullLock` (defined in Cache/Cache.h), which is a dummy lock that does nothing. You can supply that as the third parameter if
+As stated earlier, by default the cache is not thread-safe. That is because the fourth template parameter defaults to 
+`NullLock` (defined in Cache/Cache.h), which is a dummy lock that does nothing. You can supply that as the fourth parameter if
 you want to explicitly disable mutithread synchronization.
 
 For more examples on multithreading, please see [examples/multithread_cache.cpp] and  [examples/multithread_function_wrapping.cpp]
@@ -187,7 +187,7 @@ As you can see, wrapping a function in a cache is a matter of including `Cache/W
 the `wrap()` function. The first template parameter is the replacement policy (LRU replacement in this example) and the second
 (optional) parameter is a mutex type. By default, it is set to `NullLock`, which is a null mutex object. This improves speed
 but makes the cache not thread-safe. Pass `std::mutex` (or any other mutex object) as the second template parameter to make
-this cached function thread safe
+this cached function thread safe.
 
 Some examples on this topic are [examples/function_wrapping.cpp] for some extended examples on how to wrap a function in a
 cache and [examples/multithread_function_wrapping.cpp] for a thread-safe function wrapper accessed simultaneously from
@@ -199,7 +199,7 @@ disable statistical measurement to squeeze out every single bit of performance.
 
 By default, any cache object registers the number of hits, number of misses, number of entry invalidations (that is, number of 
 `erase()`'d keys), number of cache invalidations (the number of `clear()` calls) and the number of evicted entries (that is, 
-the number of entries deleted to make room for newer entries). If you wish to disable them, just use the fourth template
+the number of entries deleted to make room for newer entries). If you wish to disable them, just use the fifth template
 parameter like so:
 
 ```cpp
