@@ -1,7 +1,8 @@
 # Cache
 [![Build Status](https://travis-ci.com/marcizhu/Cache.svg?branch=master)](https://travis-ci.com/marcizhu/Cache)
 [![License](https://img.shields.io/github/license/marcizhu/Cache)](https://github.com/marcizhu/Cache/blob/master/LICENSE)
-[![Stability: Experimental](https://masterminds.github.io/stability/experimental.svg)](https://masterminds.github.io/stability/experimental.html)
+[![Stability: Sustained](https://masterminds.github.io/stability/sustained.svg)](https://masterminds.github.io/stability/sustained.html)
+[![codecov](https://codecov.io/gh/marcizhu/Cache/branch/master/graph/badge.svg)](https://codecov.io/gh/marcizhu/Cache)
 
 A small, lightweight, thread-safe, easy to use, header-only, fast and simple cache with selectable replacement algorithms!
 
@@ -20,6 +21,7 @@ development. Any kind of input/feedback is always welcome!
 - Ability to have custom callbacks on hit/miss/clear/erase/evicted entry.
 - 100% STL-compatible API.
 - Ability to 'wrap' functions in a cache to speed up expensive function calls.
+- Heavily tested: over 90 test cases, more than 110.000 assertions and >99% code coverage
 
 ## Table of contents
 - [Background](#background)
