@@ -1,5 +1,5 @@
 # Cache
-[![Build Status](https://travis-ci.com/marcizhu/Cache.svg?branch=master)](https://travis-ci.com/marcizhu/Cache)
+![Build & Test](https://github.com/marcizhu/Cache/workflows/Build%20&%20Test/badge.svg)
 [![License](https://img.shields.io/github/license/marcizhu/Cache)](https://github.com/marcizhu/Cache/blob/master/LICENSE)
 [![Stability: Sustained](https://masterminds.github.io/stability/sustained.svg)](https://masterminds.github.io/stability/sustained.html)
 [![codecov](https://codecov.io/gh/marcizhu/Cache/branch/master/graph/badge.svg)](https://codecov.io/gh/marcizhu/Cache)
