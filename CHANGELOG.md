@@ -15,5 +15,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 10 examples illustrating the usage of this library
 - Many tests to verify the behaviour of the library
 
-[Unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/marcizhu/Cache/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/marcizhu/Cache/releases/tag/v1.0.0
