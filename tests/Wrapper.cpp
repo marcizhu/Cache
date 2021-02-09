@@ -2,7 +2,6 @@
 #include "Cache/Wrapper.h"
 #include "Cache/Policy/LRU.h"
 
-#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 
 TEST_CASE("Function Wrapper", "[cache][wrapper]")

@@ -3,7 +3,6 @@
 #include "Cache/Cache.h"
 #include "Cache/Policy/LIFO.h"
 
-#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 
 TEST_CASE("Cache w/ LIFO replacement policy: LIFO behaviour", "[cache][behaviour][lifo]")

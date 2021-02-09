@@ -3,7 +3,6 @@
 #include "Cache/Cache.h"
 #include "Cache/Policy/FIFO.h"
 
-#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 
 TEST_CASE("Cache w/ FIFO replacement policy: FIFO behaviour", "[cache][behaviour][fifo]")

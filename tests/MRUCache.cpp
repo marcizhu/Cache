@@ -3,7 +3,6 @@
 #include "Cache/Cache.h"
 #include "Cache/Policy/MRU.h"
 
-#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 
 TEST_CASE("Cache w/ MRU replacement policy: MRU behaviour", "[cache][behaviour][mru]")

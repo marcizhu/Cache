@@ -3,7 +3,6 @@
 #include "Cache/Cache.h"
 #include "Cache/Policy/LFU.h"
 
-#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 
 TEST_CASE("Cache w/ LFU replacement policy: LFU behaviour", "[cache][behaviour][lfu]")

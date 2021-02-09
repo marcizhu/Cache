@@ -9,7 +9,6 @@
 #include "Cache/Policy/MRU.h"
 #include "Cache/Policy/Random.h"
 
-#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 
 template<template<typename> class Template>
