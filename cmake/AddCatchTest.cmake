@@ -119,8 +119,19 @@ function(add_catch_test testname)
 	endif()
 
 	if(catch_LIBRARIES)
-		target_link_libraries(${testname} ${catch_LIBRARIES} Catch2::Catch2)
+		target_link_libraries(${testname} ${catch_LIBRARIES})
 	endif()
+
+	if(NOT TARGET Catch2::Catch2)
+		include(FetchContent)
+		FetchContent_Declare(
+		  Catch2
+		  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+		  GIT_TAG        v2.13.7)
+
+		FetchContent_MakeAvailable(Catch2)
+	endif()
+	target_link_libraries(${testname} Catch2::Catch2)
 
 	if(catch_INCLUDES)
 		target_include_directories(${testname} PRIVATE ${catch_INCLUDES})
@@ -148,8 +159,8 @@ function(add_catch_test testname)
 	if(NOT catch_NOTEST)
 		add_catch_test_with_seed(
 			${testname} "${testname}" "${catch_SEED}" ${catch_UNPARSED_ARGUMENTS}
-			${catch_NOCATCHLABEL} WORKING_DIRECTORY ${catch_WORKING_DIRECTORY} TIMEOUT ${catch_TIMEOUT}
-			LABELS ${catch_LABELS} ARGUMENTS ${catch_ARGUMENTS}
+			${catch_NOCATCHLABEL} WORKING_DIRECTORY ${catch_WORKING_DIRECTORY}
+			TIMEOUT ${catch_TIMEOUT} LABELS ${catch_LABELS} ARGUMENTS ${catch_ARGUMENTS}
 		)
 	endif()
 endfunction()

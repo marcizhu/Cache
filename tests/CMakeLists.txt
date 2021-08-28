@@ -3,13 +3,13 @@ cmake_minimum_required(VERSION 3.1)
 #---------------------------------------------------------------------------------------
 # compiler config
 #---------------------------------------------------------------------------------------
-add_catch_test(API.test  CacheAPI.cpp  LIBRARIES Catch2::Catch2 Cache CXX_STANDARD 14 TIMEOUT 10)
-add_catch_test(FIFO.test FIFOCache.cpp LIBRARIES Catch2::Catch2 Cache CXX_STANDARD 14 TIMEOUT 10)
-add_catch_test(LFU.test  LFUCache.cpp  LIBRARIES Catch2::Catch2 Cache CXX_STANDARD 14 TIMEOUT 10)
-add_catch_test(LIFO.test LIFOCache.cpp LIBRARIES Catch2::Catch2 Cache CXX_STANDARD 14 TIMEOUT 10)
-add_catch_test(LRU.test  LRUCache.cpp  LIBRARIES Catch2::Catch2 Cache CXX_STANDARD 14 TIMEOUT 10)
-add_catch_test(MRU.test  MRUCache.cpp  LIBRARIES Catch2::Catch2 Cache CXX_STANDARD 14 TIMEOUT 10)
-add_catch_test(Wrap.test Wrapper.cpp   LIBRARIES Catch2::Catch2 Cache CXX_STANDARD 14 TIMEOUT 10)
+add_catch_test(API.test  CacheAPI.cpp  LIBRARIES Cache CXX_STANDARD 14 TIMEOUT 10)
+add_catch_test(FIFO.test FIFOCache.cpp LIBRARIES Cache CXX_STANDARD 14 TIMEOUT 10)
+add_catch_test(LFU.test  LFUCache.cpp  LIBRARIES Cache CXX_STANDARD 14 TIMEOUT 10)
+add_catch_test(LIFO.test LIFOCache.cpp LIBRARIES Cache CXX_STANDARD 14 TIMEOUT 10)
+add_catch_test(LRU.test  LRUCache.cpp  LIBRARIES Cache CXX_STANDARD 14 TIMEOUT 10)
+add_catch_test(MRU.test  MRUCache.cpp  LIBRARIES Cache CXX_STANDARD 14 TIMEOUT 10)
+add_catch_test(Wrap.test Wrapper.cpp   LIBRARIES Cache CXX_STANDARD 14 TIMEOUT 10)
 
 #---------------------------------------------------------------------------------------
 # Turn on compiler warnings
