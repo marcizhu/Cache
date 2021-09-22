@@ -20,7 +20,6 @@ endif()
 #---------------------------------------------------------------------------------------
 # compiler config
 #---------------------------------------------------------------------------------------
-option(CODE_COVERAGE "Enable coverage reporting" OFF)
 option(CACHE_BUILD_EXAMPLES "Build example programs" OFF)
 option(CACHE_BUILD_TESTS "Build unit tests" OFF)
 

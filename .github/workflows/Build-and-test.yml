@@ -10,43 +10,30 @@ jobs:
       fail-fast: false
       matrix:
         config:
-        - {
-            name: "Windows latest (MSVC)",
-            os: windows-latest,
-            cc: 'cl', cxx: 'cl',
-            coverage: 'OFF',
+          - name: "Windows latest (MSVC)"
+            os: windows-latest
+            cxx: 'cl'
             cmake_flags: ''
-          }
-        - {
-            name: "Windows latest (MinGW)",
-            os: windows-latest,
-            cc: 'gcc', cxx: 'g++',
-            coverage: 'OFF',
+
+          - name: "Windows latest (MinGW)"
+            os: windows-latest
+            cxx: 'g++'
             cmake_flags: ''
-          }
-        - {
-            name: "Ubuntu latest (gcc)",
-            os: ubuntu-latest,
-            pkg_manager: sudo apt-get,
-            cc: 'gcc', cxx: 'g++',
-            coverage: 'ON',
+        
+          - name: "Ubuntu latest (gcc)"
+            os: ubuntu-latest
+            cxx: 'g++'
             cmake_flags: '-- -k -j4'
-          }
-        - {
-            name: "Ubuntu latest (clang)",
-            os: ubuntu-latest,
-            cc: 'clang', cxx: 'clang++',
-            coverage: 'OFF',
+
+          - name: "Ubuntu latest (clang)"
+            os: ubuntu-latest
+            cxx: 'clang++-11'
             cmake_flags: '-- -k -j4'
-          }
-        - {
-            name: "macOS latest (clang)",
-            os: macos-latest,
-            pkg_manager: brew,
-            cc: 'clang', cxx: 'clang++',
-            coverage: 'ON',
+
+          - name: "macOS latest (clang)"
+            os: macos-latest
+            cxx: 'clang++'
             cmake_flags: '-- -k -j4'
-          }
 
     steps:
       - uses: lukka/get-cmake@latest
@@ -54,9 +41,14 @@ jobs:
         with:
           submodules: true
 
-      - name: Install lcov
-        if: "contains( matrix.config.coverage, 'ON')"
-        run: ${{ matrix.config.pkg_manager }} install lcov
+      - name: Install lcov (brew)
+        if: "contains(matrix.config.os, 'macos')"
+        run: brew install lcov
+        shell: bash
+
+      - name: Install lcov (apt)
+        if: "contains(matrix.config.os, 'ubuntu')"
+        run: sudo apt-get install lcov
         shell: bash
 
       - name: Configure & Build
@@ -66,9 +58,8 @@ jobs:
           cmakeGenerator: 'UnixMakefiles'
           cmakeListsOrSettingsJson: 'CMakeListsTxtAdvanced'
           cmakeAppendedArgs: >-
-            -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
             -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }}
-            -DCODE_COVERAGE=${{ matrix.config.coverage }}
+            -DCODE_COVERAGE=ON
             -DCACHE_BUILD_TESTS=ON
             -DCACHE_BUILD_EXAMPLES=ON
           buildWithCMakeArgs: '--config Release ${{ matrix.config.cmake_flags }}'
@@ -79,8 +70,19 @@ jobs:
         run: ctest -V -C Release
         shell: bash
 
-      - name: Create coverage report
-        if: "contains( matrix.config.coverage, 'ON')"
+      - name: Create coverage report (LLVM)
+        if: "!contains(matrix.config.os, 'windows') && contains(matrix.config.cxx, 'clang++-11')"
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          echo "#!/bin/bash" > llvm-gcov.sh
+          echo "exec llvm-cov-11 gcov \"\$@\"" >> llvm-gcov.sh
+          chmod +x llvm-gcov.sh
+          lcov --directory . --capture --gcov-tool "${{ runner.workspace }}/build/llvm-gcov.sh" --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' '*/deps/*' --output-file coverage.info
+        shell: bash
+
+      - name: Create coverage report (GCC)
+        if: "!contains(matrix.config.os, 'windows') && !contains(matrix.config.cxx, 'clang++-11')"
         working-directory: ${{ runner.workspace }}/build
         run: |
           lcov --directory . --capture --output-file coverage.info
@@ -88,10 +90,10 @@ jobs:
         shell: bash
 
       - name: Upload coverage to Codecov
-        if: "contains( matrix.config.coverage, 'ON')"
-        uses: codecov/codecov-action@v1
+        if: "!contains(matrix.config.os, 'windows')"
+        uses: codecov/codecov-action@v2
         with:
-          file: ${{ runner.workspace }}/build/coverage.info
+          files: ${{ runner.workspace }}/build/coverage.info
           flags: unittests
           name: ${{ matrix.config.name }}
           fail_ci_if_error: true

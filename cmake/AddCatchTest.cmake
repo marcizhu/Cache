@@ -119,7 +119,7 @@ function(add_catch_test testname)
 	endif()
 
 	if(catch_LIBRARIES)
-		target_link_libraries(${testname} ${catch_LIBRARIES})
+		target_link_libraries(${testname} PRIVATE ${catch_LIBRARIES})
 	endif()
 
 	if(NOT TARGET Catch2::Catch2)
@@ -131,7 +131,7 @@ function(add_catch_test testname)
 
 		FetchContent_MakeAvailable(Catch2)
 	endif()
-	target_link_libraries(${testname} Catch2::Catch2)
+	target_link_libraries(${testname} PRIVATE Catch2::Catch2)
 
 	if(catch_INCLUDES)
 		target_include_directories(${testname} PRIVATE ${catch_INCLUDES})
