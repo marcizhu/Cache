@@ -7,8 +7,7 @@
 A small, lightweight, thread-safe, easy to use, header-only, fast and simple cache with selectable replacement algorithms!
 
 This is a small library aimed to provide a simple and intuitive cache with selectable replacement policies. The cache has the
-same API as a `std::map`/`std::unordered_map` (with some nice extra features :D). Please note that this library is still in
-development. Any kind of input/feedback is always welcome!
+same API as a `std::map`/`std::unordered_map` (with some nice extra features :D).
 
 ### Features
 - Small, lightweight, fast cross-platform library.
@@ -51,8 +50,8 @@ unbounded too) for caching function call parameters, recursive calls or any type
 other types of resources that might be too frequently accessed and take too much time to read or write to.
 
 The cache replacement algorithm can be chosen at compile time (you can even write your own and use it) so that your 
-application has the best performance possible is any scenario. And speaking of performance, by default the cache tracks some
-statistics (that is, number of hits, number of misses, number of entries erased by the user, number of cache clears and number
+application has the best performance possible in any scenario. And speaking of performance, by default the cache tracks some
+statistics (number of hits, number of misses, number of entries erased by the user, number of cache clears and number
 of entries evicted). Those statistics can be disabled at compile time for better performance or even make your own custom 
 stats to track specific keys, implement callbacks and much more!
 
@@ -63,13 +62,14 @@ go!
 
 The CMake file also provides two options:
 - `CACHE_BUILD_TESTS` (default: `OFF`): Builds tests. This will require the [Catch2]
-library, which is already included in `deps/Catch2`
-- `CACHE_BUILD_EXAMPLES` (default: `OFF`): Builds the provided examples. This is a great way of learning how to use this library and start experimenting right away!
+library, which will automatically be downloaded if needed.
+- `CACHE_BUILD_EXAMPLES` (default: `OFF`): Builds the provided examples. 
 
 ## Usage
-This header only library provides the following files:
+This header-only library provides the following files:
 - `Cache/Cache.h`: Where the main `Cache` class is. This is the file you have to include to create caches.
-- `Cache/Wrapper.h`: Contains the function `wrap()`, which wraps a function in a cache. More on that later.
+- `Cache/Wrapper.h`: Contains the function `wrap()`, which wraps a function in a cache.
+- `Cache/Policy/*.h`: Contains multiple replacement policies for caches. See [Replacement policies](#replacement-policies) for more.
 
 ### Creating a cache
 To create a cache, just `#include "Cache/Cache.h"`, include your desired replacement algorithm (`Policy::LRU` is a good one to
@@ -127,7 +127,7 @@ For more information and an in-depth explanation on how it works, please see [ex
 
 The class `Cache` is 100% compatible with a `std::map`/`std::unordered_map`, and can even have an unlimited size (just pass 0
 to the constructor and the size will be unlimited), but it also has some useful "extra" functions, like:
-- `bool contains(key)`: Returns true if the cache contains the provided key. `false` otherwise
+- `bool contains(key)`: Returns `true` if the cache contains the provided key, `false` otherwise
 - `value& lookup(key)`: Alias for `at(key)`
 - `void flush(key)`: Alias for `erase(key)`
 - `void flush()`: Alias for `clear()`
@@ -145,25 +145,15 @@ objects in single-threaded scenarios, which would reduce performance. If you nee
 
 Cache<std::string, int, Policy::LRU, std::mutex> cache(100);
 ```
-
-As stated earlier, by default the cache is not thread-safe. That is because the fourth template parameter defaults to 
-`NullLock` (defined in Cache/Cache.h), which is a dummy lock that does nothing. You can supply that as the fourth parameter if
-you want to explicitly disable mutithread synchronization.
+If the fourth template parameter is not provided, it defaults to `NullLock`, which is a small dummy mutex class defined in
+Cache/Cache.h that provides the `std::mutex` interface but does nothing.
 
 For more examples on multithreading, please see [examples/multithread_cache.cpp] and  [examples/multithread_function_wrapping.cpp]
 
 ### Function wrapping
-Sometimes our applications have expensive functions, that take too long to compute some data. Thus, we want to prevent
-recalculating the same data over and over. This is the perfect job for a cache!
+This library provides the utility template function `wrap()` that takes in a function and returns a new function that automatically
+caches input-output pairs of data.
 
-We could manually add a wrapper function what has a cache, checks if a given set of parameters is in the cache and if so,
-returns the result immediately. If not, calls the function with the original parameters and stores the result in the cache.
-But why do it manually when this library already provides this awesome feature?
-
-It is important to note that this type of cache **will not** store the returned values from recursive calls (since the cache
-has no access to that data). Instead, it will only cache input-output data pairs. Thus, this is more like a "shallow" cache.
-
-The following snippet will show how to wrap any non-void function with a cache:
 ```cpp
 #include "Cache/Cache.h"      // class Cache
 #include "Cache/Wrapper.h"    // function wrap(...)
@@ -185,20 +175,24 @@ auto cached_ackermann = wrap<Policy::LRU>(ackermann, 16);
 cached_ackermann(2, 5);
 ```
 
-As you can see, wrapping a function in a cache is a matter of including `Cache/Wrapper.h` and creating an object by calling 
-the `wrap()` function. The first template parameter is the replacement policy (LRU replacement in this example) and the second
+The first template parameter is the replacement policy (LRU replacement in this example) and the second
 (optional) parameter is a mutex type. By default, it is set to `NullLock`, which is a null mutex object. This improves speed
 but makes the cache not thread-safe. Pass `std::mutex` (or any other mutex object) as the second template parameter to make
-this cached function thread safe.
+this cached function thread safe:
+
+```cpp
+// Wrap 'ackermann' in a thread-safe 16-entry cache with LRU replacement policy
+auto cached_thread_safe = wrap<Policy::LRU, std::mutex>(ackermann, 16);
+
+// after this, just call your function like usual:
+cached_thread_safe(2, 5);
+```
 
 Some examples on this topic are [examples/function_wrapping.cpp] for some extended examples on how to wrap a function in a
 cache and [examples/multithread_function_wrapping.cpp] for a thread-safe function wrapper accessed simultaneously from
 multiple threads.
 
 ### Statistics
-Sometimes we want to know how well is doing our cache. Or maybe not! Maybe we know it is doing a fantastic job and want to
-disable statistical measurement to squeeze out every single bit of performance.
-
 By default, any cache object registers the number of hits, number of misses, number of entry invalidations (that is, number of 
 `erase()`'d keys), number of cache invalidations (the number of `clear()` calls) and the number of evicted entries (that is, 
 the number of entries deleted to make room for newer entries). If you wish to disable them, just use the fifth template
@@ -222,31 +216,25 @@ how to roll your own custom statistics; or check the next section to learn more 
 implement them.
 
 ### Callbacks
-Some applications will require having callbacks on certain events. For example, say we are developing a text editor, and we
-cache file data to prevent continuously writing changes to files. In that scenario, when an entry is evicted or erased from 
-cache, we would need to write it down to the actual file.
-
-With this library, this isn't an issue. Using the custom statistics (as shown in the previous section) we can implement custom
-callbacks on certain events. For more information, please see  [examples/custom_statistics.cpp], 
-[examples/custom_callbacks.cpp] and [examples/advanced_custom_callbacks.cpp].
+Some applications will require having callbacks on certain events. With this library, it is possible to use a custom
+statistics (as shown in the previous section) in order to implement callbacks on certain events. For more information,
+please see  [examples/custom_statistics.cpp], [examples/custom_callbacks.cpp] and [examples/advanced_custom_callbacks.cpp].
 
 ### Replacement policies
-Replacement policies are in charge of determining which elements get erase to make room for new items once the cache is full.
-This library provides the following policies, although you could make your own algorithms for your specific application:
+Replacement policies are the algorithms that determine which elements get erase in order to make room for new items once
+the cache is full. This library provides the following policies, although you could make your own algorithms for your specific
+application:
 
-- `Policy::FIFO`: (defined inside [`Cache/Policy/FIFO.h`]). Works like a queue: the first element in is the first element out.
-- `Policy::LFU`: (defined inside [`Cache/Policy/LFU.h`]). Replaces the Least Frequently Used entry.
-- `Policy::LIFO`: (defined inside [`Cache/Policy/LIFO.h`]). Works like a stack: the last element in is the  first element out.
-- `Policy::LRU`: (defined inside [`Cache/Policy/LRU.h`]). Replaces the Least Recently Used entry.
-- `Policy::MRU`: (defined inside [`Cache/Policy/MRU.h`]). Replaces the Most Recently Used entry.
-- `Policy::Random`: (defined inside [`Cache/Policy/Random.h`]). Replaces a random key. This is the default if you don't specify otherwise.
+| Replacement Policy | Defined in file           | Description                                                                |
+| :----------------- | :------------------------ | :------------------------------------------------------------------------- |
+| `Policy::FIFO`     | [`Cache/Policy/FIFO.h`]   | Works like a queue: the first element in is the first element out.         |
+| `Policy::LFU`      | [`Cache/Policy/LFU.h`]    | Replaces the Least Frequently Used entry.                                  |
+| `Policy::LIFO`     | [`Cache/Policy/LIFO.h`]   | Works like a stack: the last element in is the  first element out.         |
+| `Policy::LRU`      | [`Cache/Policy/LRU.h`]    | Replaces the Least Recently Used entry.                                    |
+| `Policy::MRU`      | [`Cache/Policy/MRU.h`]    | Replaces the Most Recently Used entry.                                     |
+| `Policy::Random`   | [`Cache/Policy/Random.h`] | Replaces a random key. This is the default if you don't specify otherwise. |
 
-Depending on your application, you might choose different algorithms for your caches. For example, if your data is more likely
-to be accessed the older it is, you might want to use the MRU replacement algorithm. In contrast, if your data is more likely
-to be used the newer it is, LRU is a good candidate here. When in doubt, LRU or LFU are good candidates to start with. 
-Remember, changing the algorithm is as simple as changing the include file and the template parameter!
-
-And, of course, if any of the previous algorithms suite your needs, you can also make your own and pass it to the cache.
+As stated earlier, if none of the previous algorithms suit your needs, you can easily make your own and pass it to the cache.
 Check out [examples/custom_replacement_policy.cpp] for an in-depth example on writing your own algorithms and creating caches
 that use them.
 
@@ -266,20 +254,20 @@ need something more specific. For those cases, you might check out one of the fo
 
 ## Maintainer
 This library was created and is currently maintained by [marcizhu](https://github.com/marcizhu).
-If you find any issue with the library, you can either [open an issue](https://github.com/marcizhu/Units/issues) or e-mail me at marcizhu@gmail.com.
+If you find any issue with the library, you can either [open an issue](https://github.com/marcizhu/Cache/issues) or e-mail me at marcizhu@gmail.com.
 
 ## Credits
 This library uses [Catch2] for unit tests. Many, many thanks to the authors and collaborators of such a great library!
 
 ## Contributing
 Does this library miss any feature you'd like to have? Have you spotted any bug? PRs are always welcome! Alternatively, you
-can open an issue [here](https://github.com/marcizhu/Units/issues) or e-mail me at marcizhu@gmail.com and I'll try to
+can open an issue [here](https://github.com/marcizhu/Cache/issues) or e-mail me at marcizhu@gmail.com and I'll try to
 respond and/or fix it as soon as possible :D
 
 ## License
 Copyright (c) 2020 Marc Izquierdo  
 This library is licensed under the [MIT License](https://choosealicense.com/licenses/mit/). See
-[LICENSE](https://github.com/marcizhu/Units/blob/master/LICENSE) for more details.
+[LICENSE](https://github.com/marcizhu/Cache/blob/master/LICENSE) for more details.
 
 
 [Catch2]: https://github.com/catchorg/Catch2
