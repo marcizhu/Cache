@@ -152,8 +152,8 @@ public:
 		if(it == m_Cache.end()) return 0;
 
 		m_CachePolicy.erase(key);
-		m_Cache.erase(it);
 		m_Stats.erase(it->first, it->second);
+		m_Cache.erase(it);
 
 		return 1;
 	}
@@ -172,8 +172,8 @@ public:
 				auto it = m_Cache.find(replaced_key);
 
 				m_CachePolicy.erase(replaced_key);
-				m_Cache.erase(it);
 				m_Stats.evict(it->first, it->second);
+				m_Cache.erase(it);
 			}
 
 			m_CachePolicy.insert(pair.first->first);
@@ -207,8 +207,8 @@ public:
 				it = m_Cache.find(replaced_key);
 
 				m_CachePolicy.erase(replaced_key);
-				m_Cache.erase(it);
 				m_Stats.evict(it->first, it->second);
+				m_Cache.erase(it);
 			}
 
 			m_CachePolicy.insert(key);
