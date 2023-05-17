@@ -27,7 +27,7 @@ jobs:
 
           - name: "Ubuntu latest (clang)"
             os: ubuntu-latest
-            cxx: 'clang++-11'
+            cxx: 'clang++'
             cmake_flags: '-- -k -j4'
 
           - name: "macOS latest (clang)"
@@ -91,10 +91,11 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: "!contains(matrix.config.os, 'windows')"
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ${{ runner.workspace }}/build/coverage.info
           flags: unittests
           name: ${{ matrix.config.name }}
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           verbose: false
