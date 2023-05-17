@@ -27,7 +27,7 @@ jobs:
 
           - name: "Ubuntu latest (clang)"
             os: ubuntu-latest
-            cxx: 'clang++'
+            cxx: 'clang++14'
             cmake_flags: '-- -k -j4'
 
           - name: "macOS latest (clang)"
@@ -71,18 +71,18 @@ jobs:
         shell: bash
 
       - name: Create coverage report (LLVM)
-        if: "!contains(matrix.config.os, 'windows') && contains(matrix.config.cxx, 'clang++-11')"
+        if: "!contains(matrix.config.os, 'windows') && contains(matrix.config.cxx, 'clang++-14')"
         working-directory: ${{ runner.workspace }}/build
         run: |
           echo "#!/bin/bash" > llvm-gcov.sh
-          echo "exec llvm-cov-11 gcov \"\$@\"" >> llvm-gcov.sh
+          echo "exec llvm-cov-14 gcov \"\$@\"" >> llvm-gcov.sh
           chmod +x llvm-gcov.sh
           lcov --directory . --capture --gcov-tool "${{ runner.workspace }}/build/llvm-gcov.sh" --output-file coverage.info
           lcov --remove coverage.info '/usr/*' '*/deps/*' --output-file coverage.info
         shell: bash
 
       - name: Create coverage report (GCC)
-        if: "!contains(matrix.config.os, 'windows') && !contains(matrix.config.cxx, 'clang++-11')"
+        if: "!contains(matrix.config.os, 'windows') && !contains(matrix.config.cxx, 'clang++-14')"
         working-directory: ${{ runner.workspace }}/build
         run: |
           lcov --directory . --capture --output-file coverage.info
